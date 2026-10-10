@@ -88,7 +88,7 @@ Manual entries / optional read-only bank adapter
                          Source-backed alternatives
 ```
 
-The same private recovery file supplies chat and dashboard state. Qwen interprets the user's circumstances and explains alternatives. Application code calculates money, applies restrictions, validates financial updates, and persists changes.
+The same private recovery file supplies chat and dashboard state. The AWS Bedrock model, coordinated by the Strands SDK, interprets the user's circumstances and explains alternatives. Application code calculates money, applies restrictions, validates financial updates, and persists changes.
 
 ### Financial records
 

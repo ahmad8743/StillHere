@@ -2,6 +2,8 @@
 
 Status: historical discovery record. Superseded by the consolidated [project specification](project-specification.md).
 
+Architecture amendment, October 10, 2026: the user replaced the earlier Qwen-on-Akamai direction with **Strands Agents SDK + AWS Bedrock**, hosting the entire application on **Akamai Cloud**. The stack references below reflect that revision; the [infrastructure handoff](infrastructure-direction.md) records the current reference and pending access choices. The rest of this document retains the historical discovery context.
+
 Updated: October 10, 2026.
 
 The project folder is a new repository with no existing implementation. The decisions below are recommendations unless explicitly labeled as user requirements. The final project specification should replace pending product decisions with agreed choices, define high-level architectural responsibilities and acceptance criteria, and identify separately scoped future work. Provider access and policy changes cannot be eliminated as uncertainties; the eventual implementation must define verification tasks and fallback behavior.
@@ -20,7 +22,7 @@ The AI agent must ask useful follow-up questions, act with incomplete informatio
 
 Confirmed requirements: deliver an MVP within 12 hours of dedicated prototyping with coding agents; provide nationwide recovery guidance across multiple crisis types; try to support both displaced users with intermittent smartphone internet and users with little or no internet. The user subsequently accepted the recommended product defaults and financial direction. The consolidated specification now defines the implementation handoff and routine defaults.
 
-Confirmed agent stack: Strands Agents SDK with a Qwen model hosted on Akamai Cloud. The user reports receiving Strands-related credits, but no specific AWS hosting requirement or credit entitlement has been established. Exact model and deployment details belong to later implementation sessions.
+Confirmed agent stack: Strands Agents SDK calling an AWS Bedrock model, with the entire application hosted on Akamai Cloud. Exact model, AWS region, Akamai services, and credit entitlements require implementation-time validation.
 
 ## 1A. Proposed boundary for the 12-hour MVP
 
@@ -324,29 +326,29 @@ Modules for later coding-agent assignments:
 7. Financial ledger, scenarios, and any chosen import adapter.
 8. Evaluation fixtures, failure behavior, operations, and deployment.
 
-Finalize shared contracts before parallel implementation. Each later work package should state responsibilities, inputs, outputs, dependencies, acceptance criteria, and relevant failure cases. Owning files and concrete implementation contracts can be settled in those sessions. The implementation timebox is confirmed as 12 hours. Strands and Qwen-on-Akamai are confirmed; concrete frameworks, storage, model deployment, and hosting decisions are deferred.
+Finalize shared contracts before parallel implementation. Each later work package should state responsibilities, inputs, outputs, dependencies, acceptance criteria, and relevant failure cases. Owning files and concrete implementation contracts can be settled in those sessions. The implementation timebox is confirmed as 12 hours. Strands SDK, Bedrock inference, and Akamai application hosting are confirmed; concrete frameworks, deployed storage, model, and cloud service choices belong to implementation.
 
-## 8A. Strands + Qwen on Akamai — high-level responsibilities
+## 8A. Strands + Bedrock with Akamai hosting — high-level responsibilities
 
 - Strands coordinates the agent backend: initial/ongoing conversation, follow-up questions, recovery-file creation, and calls to the application's capabilities.
-- Qwen on Akamai provides reasoning and proposed plans grounded in retrieved evidence.
+- The AWS Bedrock model provides reasoning and proposed plans grounded in retrieved evidence.
 - Application services own household state, verified resource information, prerequisite validation, financial calculations, and interactive dashboard updates.
 - Durable case state lets conversation resume and keeps all access channels consistent.
-- Implementation sessions will select model deployment, adapter configuration, application hosting, and language/frameworks.
+- Akamai hosts the application and its durable data; implementation sessions will select services, model/region, adapter configuration, and language/frameworks.
 
 Conceptual arrangement:
 
 ```text
 Web dashboard / text channel
             |
-Case API + Strands agent
+Case API + Strands SDK on Akamai
        /            \
-Validated tools     Authenticated Qwen endpoint on Akamai
+Validated tools     AWS Bedrock model API
        |
 Case database, resource adapters, rules, financial engine
 ```
 
-The stack has a documented integration reference, which later implementation sessions can assess. No deployed integration has been tested here. [Strands overview](https://strandsagents.com/docs/), [Akamai Strands/Qwen example](https://github.com/akamai-developers/vllm-on-lke), [Akamai Qwen deployment](https://techdocs.akamai.com/quick-deploy-apps/docs/qwen), [Qwen function calling](https://qwen.readthedocs.io/en/stable/framework/function_call.html).
+Current references: [Strands Bedrock provider](https://strandsagents.com/docs/user-guide/sdk/model-providers/amazon-bedrock/) and the user-supplied [Akamai workshop](https://github.com/akamai-developers/akamai-workshop-hackmidwest). No deployed integration has been tested. The [infrastructure handoff](infrastructure-direction.md) records the ignored local workshop checkout.
 
 The key product boundary is that the agent proposes and explains actions while application services enforce rules and calculate money. The high-level specification will define expected behavior; implementation sessions will validate the selected model integration against it.
 
@@ -396,12 +398,12 @@ Useful success measures include time to the first usable resource, number of unn
 | D08 | Knowledge publication and review ownership? | Accepted: source-backed reviewed shared rules, household-private records, and user reports that flag discrepancies rather than rewrite policy |
 | D09 | Who operates data refreshes and supports real users? | Future public-pilot responsibility; implementing team maintains demonstration sources and labels stale/unavailable information |
 | D10 | Languages, accessibility, and login/account recovery? | Recommended prototype defaults: plain English, mobile/keyboard/screen-reader access, skips and corrections, and household isolation. Authentication mechanisms and production account recovery belong to implementation/pilot design |
-| D11 | Preferred stack, hosting, model provider, build time, and monthly budget? | Confirmed: 12 hours, Strands Agents SDK, Qwen inference on Akamai Cloud. Detailed stack, hosting, and budget decisions deferred to implementation sessions |
+| D11 | Preferred stack, hosting, model provider, build time, and monthly budget? | Confirmed: 12 hours, Strands Agents SDK, AWS Bedrock inference, entire application hosted on Akamai Cloud. Exact services, model/region, and budget remain implementation choices |
 | D12 | First-version program categories and catalog? | Accepted categories: urgent essentials, document recovery, aid, and finances; bounded reviewed catalog plus relevant official retrieval, with completeness limits visible |
 | D13 | Definition of success and deferred capabilities? | Accepted: urgent actionable help, feasible prerequisites/alternatives, no-car replanning, persisted chat/dashboard controls, and finance updates for spending, received support, and delayed aid. No public-readiness claim |
 | D14 | Live text access or prototype workflow? | Default: labeled simulator unless an already usable sender can be validated within the timebox; live delivery is not a core dependency |
-| D15 | Exact Qwen model, serving interface, endpoint readiness, GPU capacity, and SDK language? | Deferred by the user to separate implementation sessions; not a blocker for the high-level specification |
-| D16 | Must the Strands backend run on AWS, or is using the SDK sufficient? | No hosting requirement established. User reports Strands-related credits; entitlement and deployment decisions deferred |
+| D15 | Exact Bedrock model, AWS region, invocation permissions, and SDK configuration? | Deferred to implementation; AWS access is being obtained by the user |
+| D16 | Where does the Strands backend run? | Confirmed: Akamai, along with the rest of the application. AWS supplies Bedrock model inference |
 | D17 | Relationship between agent, user file, and dashboard? | Confirmed: agent is the central backend workflow and uses tools to create/maintain the user file/dashboard |
 | D18 | First-use entry experience? | Confirmed direction: a short general multiple-choice selection phase before chat. Exact questions, urgent-help bypass, and skip behavior are proposed |
 | D19 | Can users act through both conversation and dashboard controls? | Confirmed: both; changes affect the same recovery file and relevant plan/financial views |
@@ -410,7 +412,7 @@ Useful success measures include time to the first usable resource, number of unn
 
 ## 12. Exit criteria for discovery
 
-Discovery has been consolidated into `docs/project-specification.md`. Product scope is defined there. The implementation constraints are a 12-hour MVP and Strands with Qwen on Akamai; concrete technical choices belong to later sessions. Real-world operating responsibilities are future work outside the prototype's purpose.
+Discovery has been consolidated into `docs/project-specification.md`. Product scope is defined there. The implementation constraints are a 12-hour MVP, Strands SDK with Bedrock inference, and Akamai application hosting; concrete service and model choices belong to implementation. Real-world operating responsibilities are future work outside the prototype's purpose.
 
 The user subsequently approved adding optional check-ins, last-shared location, and simulated human follow-up to the specification. That scope is integrated; detailed response partnerships remain later pilot work and do not block implementation planning.
 

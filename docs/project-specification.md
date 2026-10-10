@@ -32,7 +32,8 @@ The user agreed to the overall prototype direction and financial concept. The fo
 
 | Area | MVP decision |
 | --- | --- |
-| Agent stack | Strands Agents SDK; Qwen inference on Akamai Cloud. One coordinating runtime agent. |
+| Agent stack | Strands Agents SDK with an AWS Bedrock model. One coordinating runtime agent; the exact model and AWS region remain to be selected. |
+| Hosting | Entire application on Akamai Cloud, including the UI, backend/Strands runtime, and durable application data. Bedrock is the external model API. Concrete Akamai services remain to be selected. |
 | Backend | Agent-led orchestration with validated application tools and durable household state. |
 | Geography | Nationwide U.S. guidance and official referral routing; detailed program rules are bounded and explicitly scoped. |
 | Crises | Floods, storms/hurricanes, wildfires, and earthquakes; other/unknown events receive general help and relevant official referrals. |
@@ -125,9 +126,9 @@ All tools and direct controls act within a household's authorization scope. Appl
 
 ```mermaid
 flowchart TD
-    UI[Mobile dashboard and conversation] --> APP[Case service and Strands orchestration]
+    subgraph AKAMAI[Akamai Cloud - application hosting and data]
+    UI[Mobile dashboard and conversation] --> APP[Case service and Strands SDK]
     TEXT[Labeled text simulator] --> APP
-    APP <--> MODEL[Qwen on Akamai Cloud]
     APP --> TOOLS[Validated application tools]
     TOOLS <--> CASE[Private recovery files]
     TOOLS --> PLAN[Prerequisite and constraint planner]
@@ -137,6 +138,8 @@ flowchart TD
     CHECK --> QUEUE[Simulated human follow-up queue]
     PLAN --> KNOW[Shared reviewed program knowledge]
     TOOLS --> DATA[Disaster and resource adapters]
+    end
+    APP <--> MODEL[AWS Bedrock model API]
     DATA --> SOURCES[Official APIs, pages, and directories]
     KNOW --> SOURCES
     BANK[Optional Plaid Sandbox adapter] --> FIN
@@ -146,7 +149,7 @@ Use a modular application with durable transactional storage and explicit intern
 
 ### Responsibility boundaries
 
-- **Strands/Qwen:** choose follow-up questions, retrieve context through tools, propose feasible alternatives, explain results, and request structured case/dashboard updates.
+- **Strands SDK and Bedrock model:** Strands coordinates model requests and allowed tool calls; the Bedrock model chooses follow-up questions, proposes feasible alternatives, explains results, and requests structured case/dashboard updates.
 - **Case service:** authorization, persistence, versioning, event processing, corrections, and synchronization.
 - **Source adapters:** retrieve and normalize external information, retain attribution, and report freshness/errors.
 - **Knowledge/planner:** enforce published prerequisites, geographic scope, timing, constraints, alternatives, and plan status.
@@ -353,7 +356,7 @@ For two people, P1 owns packages A/B and backend assembly; P2 owns packages C/D 
 
 | Package / owner role | Responsibilities and inputs | Deliverable / acceptance |
 | --- | --- | --- |
-| A — Integration and agent lead | Shared contracts, private case persistence, scoped access, Strands/Qwen tool orchestration, event versions; deterministic check-in state/scheduling and consent; coordinates B/C/D interfaces | A real agent creates/resumes a case and persists chat/control updates; check-ins become overdue without chat activity, with idempotent transitions and scoped operator access |
+| A — Integration and agent lead | Shared contracts, private case persistence, scoped access, Strands/Bedrock tool orchestration, event versions; deterministic check-in state/scheduling and consent; coordinates B/C/D interfaces | A real agent creates/resumes a case and persists chat/control updates; check-ins become overdue without chat activity, with idempotent transitions and scoped operator access |
 | B — Sources and prerequisite planner | Incident/resource adapters, bounded reviewed catalog, scoped AND/OR rules, alternatives, source versions and failure states | Live incident retrieval plus source-backed recovery paths; unknown/circular requirements and no-car constraints produce honest alternatives/blockers |
 | C — Finance engine | Manual records, restrictions/support, reconciliation, 14-day baseline/scenarios, action costs; uses A's record/event contracts and B's feasible paths | Reproducible money calculations and finance-triggered recovery-plan inputs; no counting unreceived aid or duplicated transactions |
 | D — Dashboard and access | Initial selections, chat, fixed components, direct controls, saved/queued offline behavior, text simulator, printable summary; check-in/location controls and simulated operator queue | One coherent mobile household journey; both interaction modes reflect the same state; follow-up enrollment, replies, acknowledgment, and outcomes are visibly simulated |
@@ -364,7 +367,7 @@ The integration lead owns end-to-end acceptance, setup documentation, and demons
 
 | Time | Outcome |
 | --- | --- |
-| Hours 0–1 | Select implementation stack within confirmed constraints; prove Qwen tool calling through Strands; freeze shared records/events/tool/component contracts including check-ins; select and label demo jurisdiction |
+| Hours 0–1 | Select implementation stack within confirmed constraints; prove Bedrock model tool calling through Strands; freeze shared records/events/tool/component contracts including check-ins; select and label demo jurisdiction |
 | Hours 1–5 | Build A/B/C/D in parallel against shared contracts; maintain a thin integrated path and source-backed fixtures |
 | Hours 5–8 | Complete the family journey, adaptive replanning, finance, persistence, check-in/demo follow-up, and offline/text/export basics; reconcile interface differences |
 | Hours 8–10 | Run the required acceptance scenarios and fix failures. Attempt Plaid only if the core path already passes and access is ready |
@@ -417,8 +420,8 @@ Completion requires a runnable prototype; environment/setup instructions without
 
 | Dependency / owner | Validation task | Fallback or boundary |
 | --- | --- | --- |
-| Qwen/Akamai and Strands — A | Confirm model/endpoint, credentials, tool-call compatibility, and credits; select SDK/runtime configuration | Resolve at build start. A labeled offline response fixture can aid development but does not satisfy the required working-agent demonstration |
-| Hosting/storage/auth — A | Choose deployable frameworks/storage and scoped private access; no AWS hosting requirement has been established | Keep infrastructure simple; preserve durable state and authorization contracts |
+| Bedrock and Strands — A | Confirm AWS credentials, region, model or inference-profile ID, invocation permissions, and tool-call compatibility; select SDK configuration | Resolve at build start. A labeled offline response fixture can aid development but does not satisfy the required working-agent demonstration |
+| Akamai hosting/storage/auth — A | Obtain Akamai access and choose application runtime, persistent storage, and scoped private access using the workshop as a reference | Keep infrastructure simple; preserve durable state and authorization contracts. All application hosting/data stays on Akamai; Bedrock supplies model inference. See [infrastructure direction](infrastructure-direction.md) |
 | Official feeds — B | Test NWS/USGS/OpenFEMA response schemas, relevance, source times, and failures | Explicit unavailable state plus official referral; historical fixtures clearly labeled; demonstrate at least one live incident request |
 | Local resources/policy — B | Verify demo jurisdiction, requirements, alternative path, permitted retrieval, and freshness | Official referral/confirmation task rather than invented rules or capacity |
 | 211 — B | Confirm API permission, coverage, cost, and storage terms if used | Reviewed official resource links and national/local routing; not a mandatory dependency |

@@ -2,9 +2,9 @@
 
 Updated: October 10, 2026. Contract version: `0.1`. Build timebox: 12 hours.
 
-Status: P1's C01 household case-service and intake-persistence foundation is implemented and ready for integration. Create/resume, typed initial/later intake, fact correction, scoped access, event replay/conflict handling, database upgrade, and storage-failure behavior have executable checks. The remaining application, P2 mocks, provider integrations, and deployment have not started. Examples below remain synthetic contract examples; the empty snapshot is also checked against the implementation.
+Status: P1's C01 case/access component is `IN_PROGRESS`. Its household case-service and intake-persistence foundation is implemented: create/resume, typed initial/later intake, fact correction, scoped access, event replay/conflict handling, database upgrade, and storage-failure behavior have executable checks. Remaining domain command handlers and scoped operator provisioning are pending. The remaining application, P2 mocks, provider integrations, and deployment have not started. Examples below remain synthetic contract examples; the empty snapshot is also checked against the implementation.
 
-The [project specification](project-specification.md) controls product scope. This document controls component boundaries, input/output contracts, ownership, and progress reporting. C01 now selects Python 3.11+, SQLite, a local standard-library HTTP adapter, and server-issued anonymous household bearer sessions. Other runtime/frontend/provider choices remain pending. The JSON-shaped contracts below apply regardless of those choices.
+The [project specification](project-specification.md) controls product scope. This document controls component boundaries, input/output contracts, ownership, and progress reporting. C01 now selects Python 3.11+, SQLite, a local standard-library HTTP adapter, and server-issued anonymous household bearer sessions. The confirmed next direction is Strands Agents SDK with an AWS Bedrock model, with all application runtime/data hosted on Akamai Cloud. Exact model, region, and Akamai services remain pending; [infrastructure direction](infrastructure-direction.md) records the reference and credential gates. The JSON-shaped contracts below apply regardless of those choices.
 
 ## 1. Ownership and working boundaries
 
@@ -12,7 +12,7 @@ The [project specification](project-specification.md) controls product scope. Th
 
 | Owner | Owns | Integration boundary |
 | --- | --- | --- |
-| P1 — Agent and recovery infrastructure | Original packages A/B: Strands/Qwen, validated tools, private persistence/access, sources, knowledge, prerequisite planning, application preparation, check-in engine, backend integration/deployment | Owns every durable case write and the backend command handlers. Calls P2's finance module with ordinary data. |
+| P1 — Agent and recovery infrastructure | Original packages A/B: Strands/Bedrock, validated tools, private persistence/access, sources, knowledge, prerequisite planning, application preparation, check-in engine, backend integration/deployment | Owns every durable case write and the backend command handlers. Calls P2's finance module with ordinary data. |
 | P2 — User experience and finance | Original packages C/D: finance module, intake/chat UI, dashboard, check-in/location controls, operator queue UI, offline client behavior, text simulator, printable summary | Builds against a mock case/command service. Supplies a backend-compatible finance module without direct database, agent, or provider dependencies. |
 
 P1 owns shared contract definitions and backend assembly. P2 owns shared synthetic fixture content and the acceptance walkthrough. Both review interface changes. Use separate implementation directories for these modules; concrete paths are recorded here at build start. Each owner can work independently against the agreed fixtures.
@@ -195,11 +195,15 @@ An agent/model failure after a user turn is stored marks that turn failed and ke
 
 ### C02 first slice and tool extensions — planned
 
-The first C02 slice is one configured Strands/Qwen connection, durable chat-turn handling, and two tools: read the current case and propose a `fact.correct` command. Acceptance requires a real tool call, a saved case update and reply, safe turn replay, and a visible provider-failure state that preserves valid case data. Resource retrieval, planning, finance, and check-in tools belong to later slices; C02 remains `NOT_STARTED` until implementation begins.
+The first C02 slice is one configured Strands SDK connection to an AWS Bedrock model, durable chat-turn handling, and two tools: read the current case and propose a `fact.correct` command. Acceptance requires a real tool call, a saved case update and reply, safe turn replay, and a visible provider-failure state that preserves valid case data. Resource retrieval, planning, finance, and check-in tools belong to later slices. The uncommitted Qwen-based attempt was rolled back on October 10, 2026; C02 is `NOT_STARTED` under the revised architecture.
+
+Strands runs inside the application backend on Akamai. Bedrock is the external inference provider; AWS model access does not change case ownership, session authority, command envelopes, or the P2 API. Pin the SDK and explicitly configure the Bedrock model and region in the future implementation. Keep both providers' credentials server-side. Akamai deployment is a separate bounded slice after the local model/tool path works.
 
 Keep agent configuration/turn orchestration separate from tool adapters and domain handlers. A central allowlist registers each tool's name, description, argument schema, result schema, and callable. New tools add their own adapter, contract definitions and focused checks without changing the agent loop. Domain logic stays behind the existing case service or the owning module's interface; adapters do not write directly to SQLite.
 
 Authenticated session/case context is injected by the backend, never accepted as model-selected authority. Writes retain the command envelope, version conflicts, and stable child-event identity across replay; a changed logical mutation requires a new event ID. Each new tool must verify its schema, scoped access, relevant failure behavior, and any durable replay effect before registration. Shared contract changes follow the existing version/review protocol.
+
+The [planned tool inventory and Strands feature mapping](strands-capabilities.md#planned-tool-inventory) covers later tools, their owning components, and operations that remain outside the household agent's registry. Existing C01 services support case read, fact correction, and intake; their Strands adapters belong to C02 and are not implemented yet.
 
 ## 5. Interface III — Independent finance module
 
@@ -255,7 +259,7 @@ These contracts keep P1's internal modules replaceable and let P2 produce fixtur
 | ID / component | Owner | Input | Output |
 | --- | --- | --- | --- |
 | C01 — Case service/access | P1 | Authorized session; case ID; command/version/event envelope | Scoped snapshots, atomic event outcomes, version/history; no cross-household data |
-| C02 — Strands/Qwen orchestration and tools | P1 | User turn, current scoped case, allowed tools and their results | Persisted assistant turn, focused questions, validated structured tool commands/component descriptors; model/provider failure state |
+| C02 — Strands/Bedrock orchestration and tools | P1 | User turn, current scoped case, allowed tools and their results | Persisted assistant turn, focused questions, validated structured tool commands/component descriptors; model/provider failure state |
 | C03 — Incident adapters | P1 | Current/damaged geography, crisis type, time, provider configuration | Normalized alerts/events/declarations with applicability, sources, freshness and per-provider retrieval states |
 | C04 — Resource catalog and reviewed knowledge | P1 | Needs, incident/jurisdiction, relevant facts, program IDs/version filters | Normalized resources and published rules; availability/unknowns; candidate discrepancies remain unpublished |
 | C05 — Prerequisite/constraint planner | P1 | Relevant facts/evidence, published AND/OR rules, incident scope, prior actions, user priorities | Feasible/provisional actions, blocked prerequisites/cycles, alternatives, costs, reasons and preserved completed work |
@@ -314,8 +318,8 @@ Update this table at handoffs and when a milestone changes. Report implementatio
 
 | ID / component | Owner | Build status | Evidence / implementation path | Next task or gate |
 | --- | --- | --- | --- | --- |
-| C01 Case/access | P1 | READY_FOR_INTEGRATION | `backend/stillhere/`, `contracts/case-service.schema.json`, `tests/`; 26 checks pass for create/resume, typed intake/fact correction, HTTP, concurrency, isolation, legacy-database upgrade and storage rollback | P2 review/use intake definitions; next P1 slice is C02 model/tool proof; later domain handlers and scoped operator provisioning remain pending |
-| C02 Agent/tools | P1 | NOT_STARTED | None | Prove real Strands/Qwen tool call and durable case update; verify failure path |
+| C01 Case/access | P1 | IN_PROGRESS | `backend/stillhere/`, `contracts/case-service.schema.json`, `tests/`; existing foundation has 26 passing checks for create/resume, typed intake/fact correction, HTTP, concurrency, isolation, legacy-database upgrade and storage rollback; Strands adapters not yet implemented | P2 review/use intake definitions; C02 model/tool proof next; agree and implement remaining domain handlers/derived-result commit paths and scoped operator provisioning before component readiness |
+| C02 Agent/tools | P1 | NOT_STARTED | Uncommitted first attempt rolled back; no agent implementation retained | Prove real Strands/Bedrock tool call and durable case update; verify failure path |
 | C03 Incident adapters | P1 | NOT_STARTED | None | Normalize NWS/USGS/OpenFEMA; verify at least one live request and provider failure |
 | C04 Resources/knowledge | P1 | NOT_STARTED | None | Choose demo jurisdiction; record reviewed sources/rules and official nationwide referrals |
 | C05 Planner | P1 | NOT_STARTED | None | Exercise AND/OR alternatives, circular/missing requirements and no-car replanning |
@@ -332,7 +336,7 @@ Update this table at handoffs and when a milestone changes. Report implementatio
 | C16 Assembly/acceptance | P1 + P2 walkthrough | NOT_STARTED | None | Integrate early path; document environment, checks and runnable demo |
 | O01 Plaid Sandbox | P2 + P1 integration | DEFERRED | None | Attempt only after required core checks pass and sandbox access is ready |
 
-Progress: C01's household/intake foundation, executable definitions, setup, and local acceptance evidence exist. Full application/provider behavior, P2 mocks, remaining populated domain schemas, and the joint contract freeze remain pending. C01 readiness applies to the recorded slice, not all planned backend handlers or public operation.
+Progress: C01's household/intake foundation, executable definitions, setup, and local acceptance evidence exist. C01 is `IN_PROGRESS` at component level because remaining domain handlers and scoped operator provisioning are unfinished; the proven foundation remains available for integration. Full application/provider behavior, P2 mocks, remaining populated domain schemas, and the joint contract freeze remain pending. C02's planned Strands adapters have not started.
 
 ### Milestones and handoff gates
 
@@ -358,5 +362,7 @@ For every meaningful progress update, record component ID, owner, previous/new s
 | 2026-10-10 | Created contract baseline and two-person tracker; all required components marked NOT_STARTED | Planning documents only; owners freeze executable contracts at build start |
 | 2026-10-10 | P1 C01: NOT_STARTED → READY_FOR_INTEGRATION for the household create/resume/fact-correction slice | Python/SQLite implementation and shared JSON Schema; `python3 -W error::ResourceWarning -m unittest discover -s tests -v` passes 13 service/HTTP checks; P2 boundary review and additional domain handlers next |
 | 2026-10-10 | P1 C01: READY_FOR_INTEGRATION retained; expanded with typed intake, shared command handlers and additive audit migration | `commands.py`, shared `IntakeSelections`/`IntakeNeed` definitions, `tests/test_intake.py` and HTTP checks; 26 checks pass; P2 uses the documented vocabulary and C02 model/tool proof is the next P1 slice |
+| 2026-10-10 | P1 C02: uncommitted first attempt rolled back; NOT_STARTED under revised infrastructure direction | Retained committed C01 case/intake foundation at `0d56429`; all backend/schema/test files match that commit and all 26 tests pass after rollback. Strands SDK + AWS Bedrock replaces Qwen inference, entire app hosted on Akamai. Reference-only workshop clone excluded by `/.references/`; contract `0.1` unchanged. Next: implement the bounded Bedrock/tool slice and validate live access when credentials are ready |
+| 2026-10-10 | P1 C01: READY_FOR_INTEGRATION → IN_PROGRESS after review of the planned tool inventory; C02 remains NOT_STARTED | C01 implements the case-read, fact-correction, and intake services used by planned tools, but remaining command handlers/derived-result commit paths and scoped operator provisioning are pending. Existing implementation and 26-check evidence are retained. [Strands inventory](strands-capabilities.md#planned-tool-inventory) documents 29 planned tools and covers all 15 command types; no Strands adapters were implemented. Next: bounded C02 model/tool proof, followed by agreed domain slices and C01 handlers |
 
 This file is a manually maintained handoff record. It does not run a monitor, dispatch agents, or automatically inspect another person's progress.
