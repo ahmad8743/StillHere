@@ -2,9 +2,9 @@
 
 Updated: October 10, 2026. Contract version: `0.1`. Build timebox: 12 hours.
 
-Status: initial contract baseline for two-person implementation. The repository currently contains planning documents; application implementation, executable mocks, integrations, and deployment have not started. Examples below are synthetic contract examples, not working endpoints or verified integration results.
+Status: P1's first C01 household case-service slice is implemented and ready for integration. Create/resume, fact correction, scoped access, event replay/conflict handling, and storage-failure behavior have executable checks. The remaining application, P2 mocks, provider integrations, and deployment have not started. Examples below remain synthetic contract examples; the empty snapshot is also checked against the implementation.
 
-The [project specification](project-specification.md) controls product scope. This document controls the proposed component boundaries, input/output contracts, ownership, and progress reporting. Runtime languages, frameworks, transport routes, storage, authentication mechanism, and model/provider configuration are selected at build start. The JSON-shaped contracts below apply regardless of those choices.
+The [project specification](project-specification.md) controls product scope. This document controls component boundaries, input/output contracts, ownership, and progress reporting. C01 now selects Python 3.11+, SQLite, a local standard-library HTTP adapter, and server-issued anonymous household bearer sessions. Other runtime/frontend/provider choices remain pending. The JSON-shaped contracts below apply regardless of those choices.
 
 ## 1. Ownership and working boundaries
 
@@ -16,6 +16,8 @@ The [project specification](project-specification.md) controls product scope. Th
 | P2 — User experience and finance | Original packages C/D: finance module, intake/chat UI, dashboard, check-in/location controls, operator queue UI, offline client behavior, text simulator, printable summary | Builds against a mock case/command service. Supplies a backend-compatible finance module without direct database, agent, or provider dependencies. |
 
 P1 owns shared contract definitions and backend assembly. P2 owns shared synthetic fixture content and the acceptance walkthrough. Both review interface changes. Use separate implementation directories for these modules; concrete paths are recorded here at build start. Each owner can work independently against the agreed fixtures.
+
+Build-start paths: P1 case service `backend/stillhere/`; shared executable definitions `contracts/case-service.schema.json`; P1 verification `tests/`; setup and HTTP handoff [README](../README.md). P2 frontend/finance/mock paths remain to be selected by P2. C01 defines its implemented requests/results and the full top-level snapshot shape; populated domain schemas and the two-owner freeze remain pending. No P2 implementation or fixture status is inferred from P1's tests.
 
 Three interfaces cross the ownership boundary:
 
@@ -177,6 +179,14 @@ Idempotency key is `(case_id, event_id)`; authorize before looking up any result
 
 P1 checks versions and commits validated changes atomically. A conflict does not silently overwrite a newer fact. A lost response is resolved by retrying/reading the event result; it does not prove the event failed. Chat-derived tools use the same validation, access, and version rules as direct controls. Their durable effects receive stable child-event IDs so replaying a turn cannot duplicate spending or schedules.
 
+### C01 executable slice and transport
+
+The local service implements `POST /v1/sessions`, `POST /v1/cases`, `GET /v1/cases/{case_id}`, and `POST /v1/commands` for `fact.correct` only. A session request carries only `contract_version`; the server chooses household authority. Case creation takes `contract_version`, stable `event_id`, and explicit IANA `time_zone` and currently creates an empty case. Optional intake selections are deferred with `intake.submit`. Reads require `X-Contract-Version: 0.1`; private routes require a bearer session. Operator/system channels are rejected until trusted scoped services exist.
+
+`FactCorrectionPayload` is `{fact_key, value, observed_at}`. The server derives `user_reported` (or `unknown` for `null`) and never accepts client-supplied provenance. Domain-specific facts remain ordinary JSON data; they do not grant consent/access or modify money. The command fingerprint excludes only `expected_case_version`. A valid conflicting event reserves that identity, so a retry may change the precondition but requires a new ID for changed intent. Malformed transport or an unusable event ID returns a versioned `AccessError`; valid case/command submissions use the existing result envelope.
+
+Corrections preserve completed work and conservatively invalidate existing plan/finance outputs with `state: "pending"`. Additive optional `pending_input_case_version` records the new target version while retained finance `input_case_version` identifies the old calculation. Recalculation/replanning remain future handlers. Full payloads, HTTP statuses, setup, and retry rules are recorded in the [handoff README](../README.md). This slice does not establish completed intake, provider integration, operator access, or the full contract freeze.
+
 An agent/model failure after a user turn is stored marks that turn failed and keeps previously valid data. If a calculation/replan is pending, its section exposes `pending` and the input version; an old forecast is never presented as current for newer inputs.
 
 ## 5. Interface III — Independent finance module
@@ -292,7 +302,7 @@ Update this table at handoffs and when a milestone changes. Report implementatio
 
 | ID / component | Owner | Build status | Evidence / implementation path | Next task or gate |
 | --- | --- | --- | --- | --- |
-| C01 Case/access | P1 | NOT_STARTED | None | Select storage/access; prove create/resume, scoped writes and retry/conflict behavior |
+| C01 Case/access | P1 | READY_FOR_INTEGRATION | `backend/stillhere/`, `contracts/case-service.schema.json`, `tests/`; 13 checks pass for the household create/resume/fact-correction slice, including HTTP, concurrency, isolation and storage rollback | P2 review/use these boundaries; add intake/domain handlers and later scoped operator provisioning |
 | C02 Agent/tools | P1 | NOT_STARTED | None | Prove real Strands/Qwen tool call and durable case update; verify failure path |
 | C03 Incident adapters | P1 | NOT_STARTED | None | Normalize NWS/USGS/OpenFEMA; verify at least one live request and provider failure |
 | C04 Resources/knowledge | P1 | NOT_STARTED | None | Choose demo jurisdiction; record reviewed sources/rules and official nationwide referrals |
@@ -310,13 +320,13 @@ Update this table at handoffs and when a milestone changes. Report implementatio
 | C16 Assembly/acceptance | P1 + P2 walkthrough | NOT_STARTED | None | Integrate early path; document environment, checks and runnable demo |
 | O01 Plaid Sandbox | P2 + P1 integration | DEFERRED | None | Attempt only after required core checks pass and sandbox access is ready |
 
-Planning progress: the product specification, two-person split, and this contract baseline are documented. Executable schemas/mocks, chosen runtime paths, and the contract freeze are pending build-start work. No implementation status is inferred from the existence of these documents.
+Progress: C01's first household slice, executable definitions, setup, and local acceptance evidence exist. Full application/provider behavior, P2 mocks, populated domain schemas, and the joint contract freeze remain pending. C01 readiness applies to the recorded slice, not all planned backend handlers or public operation.
 
 ### Milestones and handoff gates
 
 | Target | Required handoff | Current state |
 | --- | --- | --- |
-| Hour 1 | Both owners agree executable contract definitions; select stack; record module paths; P1 proves model tool calling; P2 establishes mock fixtures | NOT_STARTED |
+| Hour 1 | Both owners agree executable contract definitions; select stack; record module paths; P1 proves model tool calling; P2 establishes mock fixtures | IN_PROGRESS — C01 definitions/backend paths selected; two-owner freeze, model proof and P2 mocks pending |
 | Hour 3 | Real intake → durable case → rendered dashboard path; return/resume works | NOT_STARTED |
 | Hour 5 | Source/planner path and independent finance module available; frontend runs against fixtures | NOT_STARTED |
 | Hour 8 | Finance and check-in/queue integrated; adaptive family journey and offline/text/print basics work | NOT_STARTED |
@@ -334,5 +344,6 @@ For every meaningful progress update, record component ID, owner, previous/new s
 | Date | Change | Evidence / next action |
 | --- | --- | --- |
 | 2026-10-10 | Created contract baseline and two-person tracker; all required components marked NOT_STARTED | Planning documents only; owners freeze executable contracts at build start |
+| 2026-10-10 | P1 C01: NOT_STARTED → READY_FOR_INTEGRATION for the household create/resume/fact-correction slice | Python/SQLite implementation and shared JSON Schema; `python3 -W error::ResourceWarning -m unittest discover -s tests -v` passes 13 service/HTTP checks; P2 boundary review and additional domain handlers next |
 
 This file is a manually maintained handoff record. It does not run a monitor, dispatch agents, or automatically inspect another person's progress.

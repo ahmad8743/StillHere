@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stillhere:case-service:0.1",
+  "$comment": "C01 boundary. Other components' populated record schemas are not frozen by this slice.",
+  "$defs": {
+    "Id": {"type": "string", "minLength": 1, "maxLength": 128},
+    "Instant": {"type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$"},
+    "TimeZone": {"type": "string", "minLength": 1, "maxLength": 128, "format": "iana-time-zone"},
+    "Issue": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {"type": "string"}, "message": {"type": "string"},
+        "field": {"type": "string"}, "retryable": {"type": "boolean"}
+      }
+    },
+    "AccessError": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "error"],
+      "properties": {"contract_version": {"enum": ["0.1"]}, "error": {"$ref": "#/$defs/Issue"}}
+    },
+    "SessionResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "session_token", "created_at"],
+      "properties": {
+        "contract_version": {"enum": ["0.1"]}, "session_token": {"$ref": "#/$defs/Id"},
+        "created_at": {"$ref": "#/$defs/Instant"}
+      }
+    },
+    "SessionRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version"],
+      "properties": {"contract_version": {"enum": ["0.1"]}}
+    },
+    "CreateCaseRequest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "event_id", "time_zone"],
+      "properties": {
+        "contract_version": {"enum": ["0.1"]}, "event_id": {"$ref": "#/$defs/Id"},
+        "time_zone": {"$ref": "#/$defs/TimeZone"}
+      }
+    },
+    "CommandEnvelope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "case_id", "event_id", "expected_case_version", "occurred_at", "channel", "type", "payload"],
+      "properties": {
+        "contract_version": {"enum": ["0.1"]},
+        "case_id": {"$ref": "#/$defs/Id"}, "event_id": {"$ref": "#/$defs/Id"},
+        "expected_case_version": {"type": "integer", "minimum": 1},
+        "occurred_at": {"$ref": "#/$defs/Instant"},
+        "channel": {"enum": ["chat", "dashboard", "text_simulator", "operator", "system"]},
+        "type": {"enum": ["intake.submit", "conversation.message", "fact.correct", "task.update", "finance.update", "scenario.set", "application.update", "help.request", "check_in.enroll", "check_in.reply", "check_in.pause", "location.share", "location.clear", "follow_up.acknowledge", "follow_up.record"]},
+        "payload": {"type": "object"}
+      }
+    },
+    "FactCorrectionPayload": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fact_key", "value", "observed_at"],
+      "properties": {
+        "fact_key": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_]*$"},
+        "value": {}, "observed_at": {"$ref": "#/$defs/Instant"}
+      }
+    },
+    "Fact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "state", "observed_at", "source_ids"],
+      "properties": {
+        "value": {}, "state": {"enum": ["unknown", "user_reported", "source_supported", "conflicting", "stale"]},
+        "observed_at": {"anyOf": [{"$ref": "#/$defs/Instant"}, {"type": "null"}]},
+        "source_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}}
+      }
+    },
+    "DashboardDescriptor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "record_ids", "display_order"],
+      "properties": {
+        "id": {"$ref": "#/$defs/Id"},
+        "kind": {"enum": ["urgent_resource", "next_step", "task_list", "blocker_controls", "evidence_checklist", "aid_tracker", "finance_overview", "scenario_comparison", "check_in", "source_details"]},
+        "record_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}},
+        "display_order": {"type": "integer", "minimum": 0}
+      }
+    },
+    "CaseSnapshot": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "case_id", "case_version", "updated_at", "time_zone", "household_mode", "facts", "needs", "evidence", "resources", "plan", "applications", "finance", "check_in", "shared_location", "follow_ups", "conversation", "components", "sources", "notices"],
+      "properties": {
+        "contract_version": {"enum": ["0.1"]}, "case_id": {"$ref": "#/$defs/Id"},
+        "case_version": {"type": "integer", "minimum": 1}, "updated_at": {"$ref": "#/$defs/Instant"},
+        "time_zone": {"$ref": "#/$defs/TimeZone"}, "household_mode": {"enum": ["synthetic"]},
+        "facts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/Fact"}},
+        "needs": {"type": "array", "items": {"type": "object"}},
+        "evidence": {"type": "array", "items": {"type": "object"}},
+        "resources": {
+          "type": "object", "required": ["state", "items", "notices"],
+          "properties": {
+            "state": {"enum": ["available", "no_match", "unavailable", "not_requested"]},
+            "items": {"type": "array", "items": {"type": "object"}},
+            "notices": {"type": "array", "items": {"type": "object"}}
+          }
+        },
+        "plan": {
+          "type": "object", "required": ["state", "version", "actions", "blockers", "questions"],
+          "properties": {
+            "state": {"type": "string"}, "version": {"type": "integer", "minimum": 0},
+            "pending_input_case_version": {"type": "integer", "minimum": 1},
+            "actions": {"type": "array", "items": {"type": "object"}},
+            "blockers": {"type": "array", "items": {"type": "object"}},
+            "questions": {"type": "array", "items": {"type": "object"}}
+          }
+        },
+        "applications": {"type": "array", "items": {"type": "object"}},
+        "finance": {
+          "type": "object", "required": ["state", "ledger", "scenarios", "baseline", "input_case_version", "computed_at"],
+          "properties": {
+            "state": {"type": "string"}, "ledger": {
+              "type": "object", "required": ["money_sources", "actual_events", "expense_commitments", "aid", "support"],
+              "properties": {
+                "money_sources": {"type": "array", "items": {"type": "object"}},
+                "actual_events": {"type": "array", "items": {"type": "object"}},
+                "expense_commitments": {"type": "array", "items": {"type": "object"}},
+                "aid": {"type": "array", "items": {"type": "object"}},
+                "support": {"type": "array", "items": {"type": "object"}}
+              }
+            },
+            "scenarios": {"type": "array", "items": {"type": "object"}},
+            "baseline": {"type": ["object", "null"]},
+            "input_case_version": {"type": "integer", "minimum": 1},
+            "pending_input_case_version": {"type": "integer", "minimum": 1},
+            "computed_at": {"anyOf": [{"$ref": "#/$defs/Instant"}, {"type": "null"}]}
+          }
+        },
+        "check_in": {
+          "type": "object", "required": ["enrolled", "status", "schedule", "last_report", "attempts"],
+          "properties": {
+            "enrolled": {"type": "boolean"}, "status": {"type": "string"},
+            "schedule": {"type": ["object", "null"]}, "last_report": {"type": ["object", "null"]},
+            "attempts": {"type": "array", "items": {"type": "object"}}
+          }
+        },
+        "shared_location": {"type": ["object", "null"]},
+        "follow_ups": {"type": "array", "items": {"type": "object"}},
+        "conversation": {
+          "type": "object", "required": ["turns"],
+          "properties": {"turns": {"type": "array", "items": {"type": "object"}}}
+        },
+        "components": {"type": "array", "items": {"$ref": "#/$defs/DashboardDescriptor"}},
+        "sources": {"type": "array", "items": {"type": "object"}},
+        "notices": {"type": "array", "items": {"type": "object"}}
+      }
+    },
+    "CommandResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["contract_version", "event_id", "status", "received_at", "applied_case_version", "case_snapshot", "issues"],
+      "properties": {
+        "contract_version": {"enum": ["0.1"]}, "event_id": {"$ref": "#/$defs/Id"},
+        "status": {"enum": ["applied", "already_applied", "needs_clarification", "conflict", "rejected", "unavailable"]},
+        "received_at": {"$ref": "#/$defs/Instant"},
+        "applied_case_version": {"type": ["integer", "null"], "minimum": 1},
+        "case_snapshot": {"anyOf": [{"$ref": "#/$defs/CaseSnapshot"}, {"type": "null"}]},
+        "issues": {"type": "array", "items": {"$ref": "#/$defs/Issue"}}
+      }
+    }
+  }
+}
