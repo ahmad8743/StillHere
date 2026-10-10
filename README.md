@@ -110,9 +110,15 @@ Command `occurred_at` supplies intake observation time. Creation can supply an o
 
 This slice persists intake. Source retrieval, urgent referrals, follow-up questions, and planning remain future C02/C04/C05 behavior; resources stay honestly labeled `not_requested`.
 
+## P2 browser prototype
+
+Open `frontend/index.html` in a browser. The P2 prototype's synthetic CaseSnapshot fixture is in `frontend/fixtures.js`; `frontend/mock-service.js` provides a browser-local adapter for `readCase`, `intake.submit`, and `fact.correct`; and `frontend/finance-engine.js` calculates the four 14-day examples from integer-cent ledger data. Finance scenarios change the displayed forecast without changing the baseline ledger. All values are synthetic. This adapter does not call the running HTTP service, and it intentionally rejects unsupported commands. Recovery/chat interactions still use their separate local demo state in the UI layer.
+
+The mock case snapshot is stored under `stillhere.p2.mock-case.v1` in browser local storage. To restore its initial fixture, run `StillHereMockService.reset()` in the browser console. This resets only the mock case, not the separate chat demo state.
+
 ## Integration rules
 
-- P1 code lives in `backend/stillhere/`; shared definitions live in `contracts/`. P2's frontend, finance module, and F01–F07 mock fixtures remain P2-owned and have no implementation paths yet. Synthetic values in `tests/` are C01 verification data.
+- P1 code lives in `backend/stillhere/`; shared definitions live in `contracts/`. P2's browser prototype, first synthetic CaseSnapshot fixture, browser-local mock adapter, and deterministic finance forecast live in `frontend/`. Remaining F01–F07 fixtures and P2 features are still pending. Synthetic values in `tests/` are C01 verification data.
 - Creation retries are keyed by the authenticated session plus creation `event_id`. They return the original case and its latest snapshot. The fingerprint includes optional intake/occurrence fields; preserve the complete request on retry.
 - Commands are keyed by `(case_id, event_id)`. Authorization happens before event lookup; duplicate resolution happens before the version check. The logical fingerprint includes all envelope fields except `expected_case_version`. Preserve the original channel, occurrence time, and payload on retry. An altered fact/value needs a new ID.
 - A valid version-conflicting command reserves its logical identity without mutating the case. After explicit reconciliation, the same intent can retry with an updated expected version. Conflicts are never automatically rebased. Replaying an accepted command returns its original `applied_case_version` and the latest authorized snapshot.

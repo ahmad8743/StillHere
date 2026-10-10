@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f2eb" />
+    <meta name="description" content="StillHere — a calm place to find your next recovery step." />
+    <title>StillHere — Help, one step at a time</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./fixtures.js" defer></script>
+    <script src="./mock-service.js" defer></script>
+    <script src="./finance-engine.js" defer></script>
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#home" data-page-link="home" aria-label="StillHere home">
+        <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
+        <span>still<span class="brand-green">here</span></span>
+      </a>
+      <div class="topbar-tools">
+        <button class="location-button" id="open-location" aria-label="Change your city"><span class="pin" aria-hidden="true">⌖</span><span><small>YOUR CITY</small><strong id="city-label">New Orleans, Louisiana</strong></span><span class="edit-mark" aria-hidden="true">⌄</span></button>
+        <span class="demo-tag"><i></i> DEMO</span>
+        <div class="menu-wrap">
+          <button class="menu-toggle" id="menu-toggle" aria-label="Menu" aria-expanded="false" aria-controls="site-menu"><span class="menu-glyph" aria-hidden="true"><i></i><i></i><i></i></span><span class="menu-label">Menu</span></button>
+          <nav class="site-menu is-hidden" id="site-menu" aria-label="Main menu">
+            <a href="#home" data-page-link="home">Home</a>
+            <a href="#chat" data-page-link="chat" data-chat-mode="recovery">Recovery chat</a>
+            <a href="#chat" data-page-link="chat" data-chat-mode="general">General chat</a>
+            <a href="#finance" data-page-link="finance">Finances</a>
+          </nav>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="screen screen-home is-active" data-screen="home">
+        <div class="home-inner">
+          <p class="eyebrow">A PLACE TO START</p>
+          <h1>Let’s focus on<br /><em>what you need right now.</em></h1>
+          <p class="intro-copy">You can get help without having all the answers. We’ll take it one step at a time.</p>
+
+          <section class="storm-card" aria-labelledby="storm-heading">
+            <div class="storm-topline"><span class="storm-icon" aria-hidden="true">✳</span><span class="storm-label">DEMO DISASTER NOTICE</span><span class="storm-place" id="storm-place">LOUISIANA · HURRICANE SCENARIO</span></div>
+            <h2 id="storm-heading">A hurricane may be affecting your area.</h2>
+            <p>Are you affected, or do you need help because of the storm?</p>
+            <div class="storm-actions"><button class="button button-primary" id="affected-yes">Yes, I’m affected <span aria-hidden="true">→</span></button><button class="button button-secondary" id="affected-unsure">I’m not sure</button></div>
+            <button class="quiet-link" id="affected-no">No, but I still need help</button>
+          </section>
+
+          <section class="continue-card" id="continue-card" aria-label="Continue previous conversation">
+            <div class="continue-icon" aria-hidden="true">↗</div>
+            <div class="continue-copy"><p class="eyebrow">YOUR CONVERSATION <span class="open-tag">STILL OPEN</span></p><h2>Pick up where you left off</h2><p id="resume-summary">Finding a safe place and food for tonight.</p></div>
+            <button class="continue-button" id="continue-chat">Continue chat <span aria-hidden="true">→</span></button>
+          </section>
+
+          <section class="finance-entry-card" aria-label="Financial conversation">
+            <div class="finance-entry-icon" aria-hidden="true">$</div>
+            <div class="finance-entry-copy"><p class="eyebrow">MONEY QUESTIONS</p><h2>Want to talk through finances?</h2><p>Sort out what’s available, what’s due, or aid you’re waiting on.</p></div>
+            <div class="finance-entry-actions"><button class="button button-secondary" id="finance-chat-start">Chat about finances <span aria-hidden="true">→</span></button><a href="#finance" data-page-link="finance">View example budget</a></div>
+          </section>
+
+          <div class="home-footer-note"><span class="small-lock" aria-hidden="true">⌑</span><span>This demo saves your conversation on this device. Skip anything you don’t want to share.</span></div>
+        </div>
+      </section>
+
+      <section class="screen screen-chat" data-screen="chat" aria-label="Support chat">
+        <div class="chat-wrap">
+          <div class="chat-toolbar"><button class="back-button" id="back-home"><span aria-hidden="true">←</span> Home</button><div class="chat-context"><span class="context-dot"></span><span id="chat-context-label">Hurricane help · New Orleans, LA</span></div><button class="clear-chat" id="new-chat">Start over</button></div>
+          <div class="chat-heading"><p class="eyebrow"><span id="chat-thread-label">YOUR RECOVERY CONVERSATION</span> <span class="chat-step" id="chat-step">· FIRST, WHAT’S MOST URGENT?</span></p><h1>We’ll work this out<br /><em>one step at a time.</em></h1></div>
+          <div class="messages" id="messages" aria-live="polite" aria-relevant="additions text">
+            <div class="message assistant-message"><div class="assistant-avatar" aria-hidden="true">s.</div><div class="message-body"><p>I’m sorry you’re dealing with this. What would help most right now?</p><small>StillHere <span>·</span> just now</small></div></div>
+            <div class="quick-options" id="quick-options" aria-label="Choose what you need first">
+              <button class="choice-card" data-need="Somewhere safe to stay"><span class="choice-icon">⌂</span><span>Somewhere safe to stay</span><i>→</i></button>
+              <button class="choice-card" data-need="Food and water"><span class="choice-icon">✳</span><span>Food and water</span><i>→</i></button>
+              <button class="choice-card" data-need="Medicine or medical care"><span class="choice-icon">＋</span><span>Medicine or medical care</span><i>→</i></button>
+              <button class="choice-card" data-need="Transportation"><span class="choice-icon">↗</span><span>Transportation</span><i>→</i></button>
+              <button class="choice-card" data-need="Documents or money"><span class="choice-icon">▤</span><span>Documents or money</span><i>→</i></button>
+              <button class="choice-card" data-need="Something else"><span class="choice-icon">…</span><span>Something else</span><i>→</i></button>
+            </div>
+          </div>
+          <div class="chat-footer">
+            <form class="composer" id="message-form"><label class="visually-hidden" for="message-input">Type a message</label><textarea id="message-input" rows="1" placeholder="Type a message…" maxlength="1200"></textarea><button class="send-button" type="submit" aria-label="Send message"><span aria-hidden="true">↑</span></button></form>
+            <div class="composer-note"><span>Share only what you’re comfortable sharing.</span><span id="connection-label">Saved on this device</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen screen-location" data-screen="location">
+        <div class="location-panel">
+          <button class="back-button" id="location-back"><span aria-hidden="true">←</span> Home</button>
+          <p class="eyebrow">YOUR RECOVERY FILE</p>
+          <h1>Your city,<br /><em>your choice.</em></h1>
+          <p class="intro-copy">We use the city saved to your profile to check for relevant local notices. You can change it at any time.</p>
+          <form id="location-form" class="location-form"><label for="city-input">City and state</label><input id="city-input" value="New Orleans, Louisiana" maxlength="100" autocomplete="address-level2" /><button class="button button-primary" type="submit">Save city</button></form>
+          <p class="location-explainer"><span aria-hidden="true">i</span> Saving this city lets StillHere check for local notices. This demo uses city only, not precise GPS. You can change your choice at any time.</p>
+          <button class="quiet-link stop-sharing-link is-hidden" id="stop-sharing-city">Stop sharing this city for notices</button>
+        </div>
+      </section>
+
+      <section class="screen screen-finance" data-screen="finance" aria-labelledby="finance-title">
+        <div class="finance-wrap">
+          <button class="back-button" data-page-link="home"><span aria-hidden="true">←</span> Home</button>
+          <div class="finance-heading">
+            <p class="eyebrow">MONEY &amp; ESSENTIALS</p>
+            <h1 id="finance-title">A clearer view<br /><em>of the next two weeks.</em></h1>
+            <p class="intro-copy">See what’s available in this example, what basic costs add up to, and when there may be a gap.</p>
+          </div>
+
+          <div class="finance-demo-note"><span aria-hidden="true">i</span><p><strong>Example only</strong> — these are synthetic planning numbers, not your account or a promise of assistance.</p></div>
+
+          <section class="finance-summary" aria-label="Example financial summary">
+            <article class="finance-stat"><span>AVAILABLE AT START</span><strong>$300</strong><small>Example cash on hand</small></article>
+            <article class="finance-stat"><span>DAILY ESSENTIALS</span><strong>$65 <small>/ day</small></strong><small>Food, temporary stay, transport</small></article>
+            <article class="finance-stat finance-stat-alert"><span>FIRST PROJECTED GAP</span><strong id="finance-first-gap">Day 5 · $55</strong><small id="finance-gap-caption">Example costs exceed available cash</small></article>
+          </section>
+
+          <section class="finance-panel scenario-panel" aria-labelledby="scenario-title">
+            <div class="finance-panel-heading"><div><p class="eyebrow">COMPARE EXAMPLES</p><h2 id="scenario-title">What if circumstances change?</h2></div><span class="finance-period">14 DAYS</span></div>
+            <div class="scenario-options" id="finance-scenarios" role="group" aria-label="Choose a financial example"></div>
+            <p class="scenario-description" id="finance-scenario-description"></p>
+          </section>
+
+          <section class="finance-panel" aria-labelledby="daily-cost-title">
+            <div class="finance-panel-heading"><div><p class="eyebrow">THE EXAMPLE BUDGET</p><h2 id="daily-cost-title">Daily basics</h2></div><span class="finance-period">14 DAYS</span></div>
+            <div class="cost-row"><span><i class="cost-dot food"></i>Food and water</span><strong>$20 / day</strong></div>
+            <div class="cost-row"><span><i class="cost-dot stay"></i>Temporary lodging</span><strong>$40 / day</strong></div>
+            <div class="cost-row"><span><i class="cost-dot travel"></i>Transportation</span><strong>$5 / day</strong></div>
+            <div class="cost-row cost-row-total"><span>One-time recovery cost · Day 1</span><strong>$30</strong></div>
+            <div class="finance-gap"><span class="gap-mark" aria-hidden="true">!</span><p><strong id="finance-gap-title">In this example, there’s a $55 shortfall on day 5.</strong><br /><span id="finance-gap-detail">That’s when the listed expenses would be more than the $300 starting amount.</span></p></div>
+            <details class="forecast-details"><summary>View the 14-day estimate</summary><div class="forecast-table-wrap"><table class="forecast-table"><thead><tr><th>Day</th><th>Money in</th><th>Listed costs</th><th>After costs</th><th>Uncovered</th></tr></thead><tbody id="finance-forecast-rows"></tbody></table></div><p class="forecast-caption">Negative projected amounts show cumulative uncovered listed costs, not debt or an actual account balance.</p></details>
+          </section>
+
+          <section class="finance-panel support-panel" aria-labelledby="support-title">
+            <div><p class="eyebrow">MONEY COMING IN</p><h2 id="support-title">Only count support once it arrives.</h2></div>
+            <p>Expected or unreceived aid is not included in the $300 example. Real program rules vary; check official instructions before making decisions.</p>
+          </section>
+
+          <a class="finance-chat-link" href="#chat" data-page-link="chat" data-chat-mode="finance">Talk through what might help <span aria-hidden="true">→</span></a>
+        </div>
+      </section>
+    </main>
+
+    <div class="location-prompt-backdrop is-hidden" id="location-prompt" role="dialog" aria-modal="true" aria-labelledby="location-prompt-title">
+      <section class="location-prompt-card">
+        <span class="prompt-pin" aria-hidden="true">⌖</span>
+        <p class="eyebrow">YOUR CHOICE</p>
+        <h2 id="location-prompt-title">Share your city for nearby notices?</h2>
+        <p>We can use your saved city, <strong id="prompt-city">New Orleans, Louisiana</strong>, to check for local disaster notices. This demo uses city only, not precise GPS.</p>
+        <button class="button button-primary prompt-main-action" id="share-saved-city">Share this city</button>
+        <button class="button button-secondary prompt-main-action" id="choose-location-city">Choose a different city</button>
+        <button class="quiet-link prompt-skip" id="not-now">Not now</button>
+      </section>
+    </div>
+
+    <aside class="emergency-bar" aria-label="Emergency help">
+      <div class="emergency-mark" aria-hidden="true">!</div><div class="emergency-copy"><strong>In immediate danger?</strong><span>Call 911. This number stays visible if your data connection drops.</span></div><a href="tel:911" class="call-button">Call 911 <span aria-hidden="true">↗</span></a>
+    </aside>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
