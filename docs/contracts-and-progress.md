@@ -2,7 +2,7 @@
 
 Updated: October 10, 2026. Contract version: `0.1`. Build timebox: 12 hours.
 
-Status: P1's first C01 household case-service slice is implemented and ready for integration. Create/resume, fact correction, scoped access, event replay/conflict handling, and storage-failure behavior have executable checks. The remaining application, P2 mocks, provider integrations, and deployment have not started. Examples below remain synthetic contract examples; the empty snapshot is also checked against the implementation.
+Status: P1's C01 household case-service and intake-persistence foundation is implemented and ready for integration. Create/resume, typed initial/later intake, fact correction, scoped access, event replay/conflict handling, database upgrade, and storage-failure behavior have executable checks. The remaining application, P2 mocks, provider integrations, and deployment have not started. Examples below remain synthetic contract examples; the empty snapshot is also checked against the implementation.
 
 The [project specification](project-specification.md) controls product scope. This document controls component boundaries, input/output contracts, ownership, and progress reporting. C01 now selects Python 3.11+, SQLite, a local standard-library HTTP adapter, and server-issued anonymous household bearer sessions. Other runtime/frontend/provider choices remain pending. The JSON-shaped contracts below apply regardless of those choices.
 
@@ -181,13 +181,25 @@ P1 checks versions and commits validated changes atomically. A conflict does not
 
 ### C01 executable slice and transport
 
-The local service implements `POST /v1/sessions`, `POST /v1/cases`, `GET /v1/cases/{case_id}`, and `POST /v1/commands` for `fact.correct` only. A session request carries only `contract_version`; the server chooses household authority. Case creation takes `contract_version`, stable `event_id`, and explicit IANA `time_zone` and currently creates an empty case. Optional intake selections are deferred with `intake.submit`. Reads require `X-Contract-Version: 0.1`; private routes require a bearer session. Operator/system channels are rejected until trusted scoped services exist.
+The local service implements `POST /v1/sessions`, `POST /v1/cases`, `GET /v1/cases/{case_id}`, and `POST /v1/commands` for `fact.correct` and `intake.submit`. A session request carries only `contract_version`; the server chooses household authority. Case creation takes `contract_version`, stable `event_id`, and explicit IANA `time_zone`, plus optional `intake: IntakeSelections` and `occurred_at`. Omitted intake still creates the original empty snapshot. Reads require `X-Contract-Version: 0.1`; private routes require a bearer session. Operator/system channels are rejected until trusted scoped services exist.
 
 `FactCorrectionPayload` is `{fact_key, value, observed_at}`. The server derives `user_reported` (or `unknown` for `null`) and never accepts client-supplied provenance. Domain-specific facts remain ordinary JSON data; they do not grant consent/access or modify money. The command fingerprint excludes only `expected_case_version`. A valid conflicting event reserves that identity, so a retry may change the precondition but requires a new ID for changed intent. Malformed transport or an unusable event ID returns a versioned `AccessError`; valid case/command submissions use the existing result envelope.
 
-Corrections preserve completed work and conservatively invalidate existing plan/finance outputs with `state: "pending"`. Additive optional `pending_input_case_version` records the new target version while retained finance `input_case_version` identifies the old calculation. Recalculation/replanning remain future handlers. Full payloads, HTTP statuses, setup, and retry rules are recorded in the [handoff README](../README.md). This slice does not establish completed intake, provider integration, operator access, or the full contract freeze.
+`IntakeSelections` has optional `help_urgency`, `crisis_type`, `needs`, `household_group`, and `current_location` fields. Its exact enum values, nullable/empty choices, and mutually exclusive selections are defined in the shared JSON Schema and [README](../README.md#typed-intake-for-the-ui-and-agent). The same shape is creation's `intake` or the entire `intake.submit` payload. Command `occurred_at` is the intake observation time; creation uses optional `occurred_at` or receipt time. Missing fields preserve prior answers; explicit uncertainty produces unknown facts. Selected needs get stable `IntakeNeed` IDs, unknown coverage, and fact references. Unselected needs remain present; no household headcount, balance, location-sharing permission, or enrollment is inferred. Intake remains skippable and partial.
+
+Creation plus intake commits at version 1; each accepted later intake increments the case version once. `backend/stillhere/commands.py` contains the deterministic handlers/schema mapping; the service retains every durable write and cross-cutting access/replay/version rule. New audit events retain the prior whole case; an additive migration preserves first-slice SQLite databases and historical prior-fact audits without inventing historical snapshots.
+
+Corrections and intake preserve completed work and conservatively invalidate existing plan/finance outputs with `state: "pending"`. Additive optional `pending_input_case_version` records the new target version while retained finance `input_case_version` identifies the old calculation. Recalculation/replanning remain future handlers. Full payloads, HTTP statuses, setup, and retry rules are recorded in the [handoff README](../README.md). This slice persists intake only; agent questions, urgent referrals/resources, provider integration, operator access, UI, and the full contract freeze remain pending.
 
 An agent/model failure after a user turn is stored marks that turn failed and keeps previously valid data. If a calculation/replan is pending, its section exposes `pending` and the input version; an old forecast is never presented as current for newer inputs.
+
+### C02 first slice and tool extensions — planned
+
+The first C02 slice is one configured Strands/Qwen connection, durable chat-turn handling, and two tools: read the current case and propose a `fact.correct` command. Acceptance requires a real tool call, a saved case update and reply, safe turn replay, and a visible provider-failure state that preserves valid case data. Resource retrieval, planning, finance, and check-in tools belong to later slices; C02 remains `NOT_STARTED` until implementation begins.
+
+Keep agent configuration/turn orchestration separate from tool adapters and domain handlers. A central allowlist registers each tool's name, description, argument schema, result schema, and callable. New tools add their own adapter, contract definitions and focused checks without changing the agent loop. Domain logic stays behind the existing case service or the owning module's interface; adapters do not write directly to SQLite.
+
+Authenticated session/case context is injected by the backend, never accepted as model-selected authority. Writes retain the command envelope, version conflicts, and stable child-event identity across replay; a changed logical mutation requires a new event ID. Each new tool must verify its schema, scoped access, relevant failure behavior, and any durable replay effect before registration. Shared contract changes follow the existing version/review protocol.
 
 ## 5. Interface III — Independent finance module
 
@@ -302,7 +314,7 @@ Update this table at handoffs and when a milestone changes. Report implementatio
 
 | ID / component | Owner | Build status | Evidence / implementation path | Next task or gate |
 | --- | --- | --- | --- | --- |
-| C01 Case/access | P1 | READY_FOR_INTEGRATION | `backend/stillhere/`, `contracts/case-service.schema.json`, `tests/`; 13 checks pass for the household create/resume/fact-correction slice, including HTTP, concurrency, isolation and storage rollback | P2 review/use these boundaries; add intake/domain handlers and later scoped operator provisioning |
+| C01 Case/access | P1 | READY_FOR_INTEGRATION | `backend/stillhere/`, `contracts/case-service.schema.json`, `tests/`; 26 checks pass for create/resume, typed intake/fact correction, HTTP, concurrency, isolation, legacy-database upgrade and storage rollback | P2 review/use intake definitions; next P1 slice is C02 model/tool proof; later domain handlers and scoped operator provisioning remain pending |
 | C02 Agent/tools | P1 | NOT_STARTED | None | Prove real Strands/Qwen tool call and durable case update; verify failure path |
 | C03 Incident adapters | P1 | NOT_STARTED | None | Normalize NWS/USGS/OpenFEMA; verify at least one live request and provider failure |
 | C04 Resources/knowledge | P1 | NOT_STARTED | None | Choose demo jurisdiction; record reviewed sources/rules and official nationwide referrals |
@@ -320,14 +332,14 @@ Update this table at handoffs and when a milestone changes. Report implementatio
 | C16 Assembly/acceptance | P1 + P2 walkthrough | NOT_STARTED | None | Integrate early path; document environment, checks and runnable demo |
 | O01 Plaid Sandbox | P2 + P1 integration | DEFERRED | None | Attempt only after required core checks pass and sandbox access is ready |
 
-Progress: C01's first household slice, executable definitions, setup, and local acceptance evidence exist. Full application/provider behavior, P2 mocks, populated domain schemas, and the joint contract freeze remain pending. C01 readiness applies to the recorded slice, not all planned backend handlers or public operation.
+Progress: C01's household/intake foundation, executable definitions, setup, and local acceptance evidence exist. Full application/provider behavior, P2 mocks, remaining populated domain schemas, and the joint contract freeze remain pending. C01 readiness applies to the recorded slice, not all planned backend handlers or public operation.
 
 ### Milestones and handoff gates
 
 | Target | Required handoff | Current state |
 | --- | --- | --- |
 | Hour 1 | Both owners agree executable contract definitions; select stack; record module paths; P1 proves model tool calling; P2 establishes mock fixtures | IN_PROGRESS — C01 definitions/backend paths selected; two-owner freeze, model proof and P2 mocks pending |
-| Hour 3 | Real intake → durable case → rendered dashboard path; return/resume works | NOT_STARTED |
+| Hour 3 | Real intake → durable case → rendered dashboard path; return/resume works | IN_PROGRESS — intake persistence and resume pass; agent and dashboard path pending |
 | Hour 5 | Source/planner path and independent finance module available; frontend runs against fixtures | NOT_STARTED |
 | Hour 8 | Finance and check-in/queue integrated; adaptive family journey and offline/text/print basics work | NOT_STARTED |
 | Hours 8–10 | Required scenarios pass; relevant source/model failures, household isolation, duplicate processing and conflicts verified | NOT_STARTED |
@@ -345,5 +357,6 @@ For every meaningful progress update, record component ID, owner, previous/new s
 | --- | --- | --- |
 | 2026-10-10 | Created contract baseline and two-person tracker; all required components marked NOT_STARTED | Planning documents only; owners freeze executable contracts at build start |
 | 2026-10-10 | P1 C01: NOT_STARTED → READY_FOR_INTEGRATION for the household create/resume/fact-correction slice | Python/SQLite implementation and shared JSON Schema; `python3 -W error::ResourceWarning -m unittest discover -s tests -v` passes 13 service/HTTP checks; P2 boundary review and additional domain handlers next |
+| 2026-10-10 | P1 C01: READY_FOR_INTEGRATION retained; expanded with typed intake, shared command handlers and additive audit migration | `commands.py`, shared `IntakeSelections`/`IntakeNeed` definitions, `tests/test_intake.py` and HTTP checks; 26 checks pass; P2 uses the documented vocabulary and C02 model/tool proof is the next P1 slice |
 
 This file is a manually maintained handoff record. It does not run a monitor, dispatch agents, or automatically inspect another person's progress.

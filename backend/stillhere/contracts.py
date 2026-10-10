@@ -72,6 +72,10 @@ def _validate(schema, value, path):
             elif isinstance(extra, dict):
                 _validate(extra, child, f"{path}.{key}")
     if isinstance(value, list):
+        if len(value) > schema.get("maxItems", float("inf")):
+            raise InvalidInput(path, "Too many selections.")
+        if schema.get("uniqueItems") and len({canonical_json(child) for child in value}) != len(value):
+            raise InvalidInput(path, "Selections must be unique.")
         for index, child in enumerate(value):
             _validate(schema.get("items", {}), child, f"{path}[{index}]")
     if isinstance(value, str):

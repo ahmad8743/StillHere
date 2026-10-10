@@ -37,7 +37,53 @@
       "required": ["contract_version", "event_id", "time_zone"],
       "properties": {
         "contract_version": {"enum": ["0.1"]}, "event_id": {"$ref": "#/$defs/Id"},
-        "time_zone": {"$ref": "#/$defs/TimeZone"}
+        "time_zone": {"$ref": "#/$defs/TimeZone"},
+        "intake": {"$ref": "#/$defs/IntakeSelections"},
+        "occurred_at": {"$ref": "#/$defs/Instant"}
+      }
+    },
+    "IntakeLocation": {
+      "type": "object", "additionalProperties": false,
+      "anyOf": [{"required": ["place"]}, {"required": ["postal_code"]}],
+      "properties": {
+        "place": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S"},
+        "postal_code": {"type": "string", "pattern": "^[0-9]{5}(-[0-9]{4})?$"}
+      }
+    },
+    "IntakeSelections": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "help_urgency": {"enum": ["urgent_safety", "essentials_today", "recovery_steps", "unsure", null]},
+        "crisis_type": {"enum": ["flood", "storm_hurricane", "wildfire", "earthquake", "other", "unsure", null]},
+        "needs": {
+          "type": ["array", "null"], "uniqueItems": true, "maxItems": 8,
+          "anyOf": [
+            {"type": "null"}, {"enum": [["unsure"]]},
+            {"type": "array", "items": {"enum": ["shelter", "food_water", "health_support", "transport", "lost_documents", "aid_applications", "managing_money"]}}
+          ],
+          "items": {"enum": ["shelter", "food_water", "health_support", "transport", "lost_documents", "aid_applications", "managing_money", "unsure"]}
+        },
+        "household_group": {
+          "type": ["array", "null"], "uniqueItems": true, "maxItems": 4,
+          "anyOf": [
+            {"type": "null"}, {"enum": [["just_me"]]},
+            {"type": "array", "items": {"enum": ["children_with_me", "other_adults_with_me", "helping_someone_else"]}}
+          ],
+          "items": {"enum": ["just_me", "children_with_me", "other_adults_with_me", "helping_someone_else"]}
+        },
+        "current_location": {"anyOf": [{"$ref": "#/$defs/IntakeLocation"}, {"type": "null"}]}
+      }
+    },
+    "IntakeNeed": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "reported_urgency", "state", "source_ids", "fact_keys"],
+      "properties": {
+        "id": {"$ref": "#/$defs/Id"},
+        "kind": {"enum": ["shelter", "food_water", "health_support", "transport", "lost_documents", "aid_applications", "managing_money"]},
+        "reported_urgency": {"enum": ["urgent_safety", "essentials_today", "recovery_steps", "unknown"]},
+        "state": {"enum": ["covered", "uncovered", "unknown"]},
+        "source_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}},
+        "fact_keys": {"type": "array", "items": {"type": "string"}}
       }
     },
     "CommandEnvelope": {

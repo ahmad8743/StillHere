@@ -73,7 +73,7 @@ class HTTPTests(unittest.TestCase):
         status, rejected, _ = self.request("POST", "/v1/commands", command)
         self.assertEqual(status, 401)
         self.assertIsNone(rejected["case_snapshot"])
-        self.assertEqual(self.request("GET", "/health")[1]["implemented_commands"], ["fact.correct"])
+        self.assertEqual(self.request("GET", "/health")[1]["implemented_commands"], ["fact.correct", "intake.submit"])
 
     def test_malformed_json_and_self_assigned_roles_are_rejected(self):
         for raw in ('{"role":"operator"}', '{"role":null,"role":"system"}', '{"amount":NaN}', '[]', '{'):
@@ -81,6 +81,30 @@ class HTTPTests(unittest.TestCase):
                 status, error, _ = self.request("POST", "/v1/sessions", raw=raw)
                 self.assertEqual(status, 400)
                 validate("AccessError", error)
+
+    def test_intake_creation_and_later_submission_share_real_http_case(self):
+        token = self.request("POST", "/v1/sessions", {"contract_version": "0.1"})[1]["session_token"]
+        request = {
+            "contract_version": "0.1", "event_id": "create_with_intake", "time_zone": "America/Chicago",
+            "intake": {"crisis_type": "flood", "household_group": ["children_with_me"]},
+        }
+        status, result, _ = self.request("POST", "/v1/cases", request, token)
+        self.assertEqual(status, 200)
+        snapshot = result["case_snapshot"]
+        self.assertEqual(snapshot["facts"]["crisis_type"]["value"], "flood")
+        command = {
+            "contract_version": "0.1", "case_id": snapshot["case_id"], "event_id": "intake_later",
+            "expected_case_version": 1, "occurred_at": "2026-10-10T15:00:00Z", "channel": "text_simulator",
+            "type": "intake.submit", "payload": {"needs": ["shelter"], "current_location": {"postal_code": "60601"}},
+        }
+        status, applied, _ = self.request("POST", "/v1/commands", command, token)
+        self.assertEqual(status, 200)
+        self.assertEqual(applied["case_snapshot"]["case_version"], 2)
+        self.assertEqual(applied["case_snapshot"]["facts"]["crisis_type"], snapshot["facts"]["crisis_type"])
+        self.assertEqual(applied["case_snapshot"]["needs"][0]["kind"], "shelter")
+        self.assertIsNone(applied["case_snapshot"]["shared_location"])
+        self.assertEqual(self.request("POST", "/v1/commands", command, token)[1]["status"], "already_applied")
+        self.assertEqual(self.request("GET", "/v1/cases/" + snapshot["case_id"], token=token)[1], applied["case_snapshot"])
 
 
 if __name__ == "__main__":

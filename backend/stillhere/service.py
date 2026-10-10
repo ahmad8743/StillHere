@@ -8,6 +8,7 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
+from .commands import COMMAND_HANDLERS, apply_command, validate_payload, with_intake
 from .contracts import InvalidInput, VERSION, canonical_json, empty_case, utc_now, validate
 
 
@@ -56,9 +57,15 @@ class CaseService:
                     applied_received_at TEXT,
                     applied_version INTEGER,
                     before_fact_json TEXT,
+                    before_case_json TEXT,
                     PRIMARY KEY (case_id, event_id)
                 );
             """)
+        # Additive migration preserves databases created by the first C01 slice.
+        with self._transaction() as connection:
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(events)")}
+            if "before_case_json" not in columns:
+                connection.execute("ALTER TABLE events ADD COLUMN before_case_json TEXT")
 
     @contextmanager
     def _connection(self):
@@ -162,6 +169,8 @@ class CaseService:
                     return self._result(event_id, "already_applied", now, snapshot, 1)
                 case_id = "case_" + secrets.token_hex(16)
                 snapshot = empty_case(case_id, request["time_zone"], now)
+                if "intake" in request:
+                    snapshot = with_intake(snapshot, request["intake"], request.get("occurred_at", now))
                 connection.execute("INSERT INTO cases VALUES (?, ?, ?)", (case_id, owner, canonical_json(snapshot)))
                 connection.execute("INSERT INTO creations VALUES (?, ?, ?, ?, ?)", (owner, event_id, fingerprint, case_id, now))
                 return self._result(event_id, "applied", now, snapshot, 1)
@@ -187,9 +196,9 @@ class CaseService:
                 snapshot = self._snapshot(connection, owner, command["case_id"])
                 if command["channel"] in ("operator", "system"):
                     raise ServiceError(403, "channel_forbidden", "This session has household authority only.")
-                if command["type"] != "fact.correct":
-                    raise ServiceError(400, "unsupported_command", "This slice implements fact.correct only.")
-                validate("FactCorrectionPayload", command["payload"])
+                if command["type"] not in COMMAND_HANDLERS:
+                    raise ServiceError(400, "unsupported_command", "This slice implements fact.correct and intake.submit only.")
+                validate_payload(command["type"], command["payload"])
                 logical = {key: value for key, value in command.items() if key != "expected_case_version"}
                 fingerprint = self._fingerprint(logical)
                 previous = connection.execute(
@@ -210,28 +219,13 @@ class CaseService:
                         "code": "version_conflict", "message": "Read and reconcile the latest case before retrying.",
                         "field": "expected_case_version", "retryable": False,
                     })
-                payload = command["payload"]
-                before = snapshot["facts"].get(payload["fact_key"])
-                snapshot["facts"][payload["fact_key"]] = {
-                    "value": payload["value"], "state": "unknown" if payload["value"] is None else "user_reported",
-                    "observed_at": payload["observed_at"], "source_ids": [],
-                }
-                snapshot["case_version"] += 1
-                snapshot["updated_at"] = now
-                # Keep existing outputs and completed work; mark calculations needing reassessment.
-                if snapshot["plan"]["state"] != "not_requested":
-                    snapshot["plan"]["state"] = "pending"
-                    snapshot["plan"]["pending_input_case_version"] = snapshot["case_version"]
-                if snapshot["finance"]["state"] == "not_calculated":
-                    snapshot["finance"]["input_case_version"] = snapshot["case_version"]
-                else:
-                    snapshot["finance"]["state"] = "pending"
-                    snapshot["finance"]["pending_input_case_version"] = snapshot["case_version"]
-                validate("CaseSnapshot", snapshot)
+                before_case = canonical_json(snapshot)
+                before = snapshot["facts"].get(command["payload"]["fact_key"]) if command["type"] == "fact.correct" else None
+                snapshot = apply_command(snapshot, command, now)
                 connection.execute("UPDATE cases SET snapshot_json=? WHERE case_id=?", (canonical_json(snapshot), command["case_id"]))
                 connection.execute(
-                    "UPDATE events SET applied_version=?, applied_received_at=?, before_fact_json=? WHERE case_id=? AND event_id=?",
-                    (snapshot["case_version"], now, canonical_json(before), command["case_id"], event_id),
+                    "UPDATE events SET applied_version=?, applied_received_at=?, before_fact_json=?, before_case_json=? WHERE case_id=? AND event_id=?",
+                    (snapshot["case_version"], now, canonical_json(before), before_case, command["case_id"], event_id),
                 )
                 return self._result(event_id, "applied", now, snapshot, snapshot["case_version"])
         except (InvalidInput, ServiceError, sqlite3.Error) as error:

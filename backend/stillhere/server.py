@@ -5,6 +5,7 @@ import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
+from .commands import COMMAND_HANDLERS
 from .contracts import InvalidInput, VERSION, canonical_json, validate
 from .service import CaseService, ServiceError
 
@@ -72,7 +73,7 @@ class Handler(BaseHTTPRequestHandler):
     def _dispatch(self):
         path = urlsplit(self.path).path
         if self.command == "GET" and path == "/health":
-            return self._send(200, {"contract_version": VERSION, "status": "ok", "implemented_commands": ["fact.correct"]})
+            return self._send(200, {"contract_version": VERSION, "status": "ok", "implemented_commands": list(COMMAND_HANDLERS)})
         if self.command == "GET" and path.startswith("/v1/cases/") and path.count("/") == 3:
             return self._send(200, self.server.service.read_case(
                 self._token(), unquote(path.rsplit("/", 1)[1]), self.headers.get("X-Contract-Version")
