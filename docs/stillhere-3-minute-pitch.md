@@ -6,6 +6,8 @@ You've just lost your home to a hurricane. You have $300 left, no ID, and no ide
 
 Help might be available. But can you get there? Do you qualify? And will your money last until that help arrives?
 
+natural disaster recovery is not a one size fits all process.
+
 That's why we built **STILL HERE**.
 
 ### Raneem | Recovery Demo
