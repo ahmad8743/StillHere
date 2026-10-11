@@ -1,0 +1,1421 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stillhere:parallel:check-ins:proposal:1",
+  "title": "Bounded C07/C12 proposal; not registered in the public 0.1 schema",
+  "description": "UTC instants, explicit household consent attested by trusted caller, authenticated operator identity excluded from payloads. CaseService owns all commits. Semantic timestamp, consent, assignment and coordinate checks also run in the pure domain. All outreach is simulated.",
+  "$ref": "#/$defs/State",
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "[A-Za-z0-9][A-Za-z0-9_.:-]*"
+    },
+    "Timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 40,
+      "pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)"
+    },
+    "NeedIds": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Identifier"
+      },
+      "maxItems": 32,
+      "uniqueItems": true
+    },
+    "Consent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "type": "boolean"
+        },
+        "granted_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "event_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "permitted_need_ids": {
+          "$ref": "#/$defs/NeedIds"
+        },
+        "purpose": {
+          "const": "simulated_follow_up",
+          "type": "string"
+        }
+      },
+      "required": [
+        "active",
+        "granted_at",
+        "received_at",
+        "event_id",
+        "permitted_need_ids",
+        "purpose"
+      ]
+    },
+    "CheckInEnrollPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "consent": {
+          "type": "boolean",
+          "const": true
+        },
+        "follow_up_consent": {
+          "type": "boolean",
+          "const": true
+        },
+        "due_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "time_zone": {
+          "type": "string",
+          "format": "iana-time-zone",
+          "maxLength": 128
+        },
+        "grace_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10080
+        },
+        "channel": {
+          "type": "string",
+          "enum": [
+            "in_app",
+            "text_simulator"
+          ]
+        },
+        "permitted_need_ids": {
+          "$ref": "#/$defs/NeedIds"
+        }
+      },
+      "required": [
+        "consent",
+        "follow_up_consent",
+        "due_at",
+        "time_zone",
+        "grace_minutes",
+        "channel"
+      ]
+    },
+    "CheckInReplyPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "occurrence_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "reply": {
+          "type": "string",
+          "enum": [
+            "okay_for_now",
+            "need_help",
+            "check_later"
+          ]
+        },
+        "next_due_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "occurrence_id",
+        "reply"
+      ]
+    },
+    "CheckInPausePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "type": "string",
+          "enum": [
+            "pause",
+            "stop"
+          ]
+        }
+      },
+      "required": [
+        "intent"
+      ]
+    },
+    "HelpRequestPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "consent": {
+          "type": "boolean",
+          "const": true
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "occurrence_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "permitted_need_ids": {
+          "$ref": "#/$defs/NeedIds"
+        }
+      },
+      "required": [
+        "consent",
+        "message"
+      ]
+    },
+    "LocationSharePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "consent": {
+          "type": "boolean",
+          "const": true
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "user_entered",
+            "device_fix"
+          ]
+        },
+        "place": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "observed_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "accuracy_meters": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "purpose": {
+          "type": "string",
+          "const": "simulated_follow_up"
+        },
+        "recipients": {
+          "type": "string",
+          "enum": [
+            "assigned_handler",
+            "case_handlers"
+          ]
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "consent",
+        "source",
+        "observed_at",
+        "purpose",
+        "recipients"
+      ]
+    },
+    "LocationClearPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {},
+      "required": []
+    },
+    "FollowUpAcknowledgePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "request_id"
+      ]
+    },
+    "FollowUpAttemptPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "type": "string",
+          "const": "attempt"
+        },
+        "channel": {
+          "type": "string",
+          "enum": [
+            "in_app",
+            "text_simulator",
+            "phone_simulator"
+          ]
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "no_reply",
+            "reported_contact",
+            "unavailable"
+          ]
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        },
+        "unresolved_need_ids": {
+          "$ref": "#/$defs/NeedIds"
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "next_due_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "request_id",
+        "kind",
+        "channel",
+        "result",
+        "simulation",
+        "unresolved_need_ids",
+        "next_action"
+      ]
+    },
+    "FollowUpOutcomePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "type": "string",
+          "const": "outcome"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "review_complete",
+            "unable_to_contact",
+            "needs_follow_up"
+          ]
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        },
+        "unresolved_need_ids": {
+          "$ref": "#/$defs/NeedIds"
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "next_due_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "request_id",
+        "kind",
+        "outcome",
+        "simulation",
+        "unresolved_need_ids",
+        "next_action"
+      ]
+    },
+    "Report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "event_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "occurrence_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "reply": {
+          "type": "string",
+          "enum": [
+            "okay_for_now",
+            "need_help",
+            "check_later"
+          ]
+        },
+        "reported_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "late": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "event_id",
+        "occurrence_id",
+        "reply",
+        "reported_at",
+        "received_at",
+        "late"
+      ]
+    },
+    "Attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "reminder",
+            "operator_contact"
+          ]
+        },
+        "channel": {
+          "type": "string",
+          "enum": [
+            "in_app",
+            "text_simulator",
+            "phone_simulator"
+          ]
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "simulated",
+            "no_reply",
+            "reported_contact",
+            "unavailable"
+          ]
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        },
+        "scheduled_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "reported_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "operator_id": {
+          "$ref": "#/$defs/Identifier"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "channel",
+        "result",
+        "simulation",
+        "scheduled_at",
+        "reported_at",
+        "received_at"
+      ]
+    },
+    "Occurrence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "schedule_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "due_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "grace_deadline": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "grace_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10080
+        },
+        "time_zone": {
+          "type": "string",
+          "format": "iana-time-zone",
+          "maxLength": 128
+        },
+        "channel": {
+          "type": "string",
+          "enum": [
+            "in_app",
+            "text_simulator"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "scheduled",
+            "due",
+            "reminder_attempted",
+            "overdue",
+            "answered",
+            "paused",
+            "canceled"
+          ]
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "okay_for_now",
+            "need_help",
+            "check_later"
+          ]
+        },
+        "created_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "consent": {
+          "$ref": "#/$defs/Consent"
+        },
+        "reminder_attempt_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "review_request_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attempt"
+          },
+          "maxItems": 256
+        },
+        "reports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Report"
+          },
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "id",
+        "schedule_id",
+        "due_at",
+        "grace_deadline",
+        "grace_minutes",
+        "time_zone",
+        "channel",
+        "status",
+        "condition",
+        "created_at",
+        "received_at",
+        "consent",
+        "reminder_attempt_id",
+        "review_request_id",
+        "attempts",
+        "reports"
+      ]
+    },
+    "CheckIn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enrolled": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_enrolled",
+            "scheduled",
+            "due",
+            "reminder_attempted",
+            "overdue",
+            "answered",
+            "paused",
+            "canceled"
+          ]
+        },
+        "consent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Consent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "current_occurrence_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "occurrences": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Occurrence"
+          },
+          "maxItems": 256
+        },
+        "last_report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Report"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "enrolled",
+        "status",
+        "consent",
+        "current_occurrence_id",
+        "occurrences",
+        "last_report"
+      ]
+    },
+    "SharedLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "consent": {
+          "type": "boolean",
+          "const": true
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "user_entered",
+            "device_fix"
+          ]
+        },
+        "place": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "observed_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "reported_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "accuracy_meters": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "purpose": {
+          "type": "string",
+          "const": "simulated_follow_up"
+        },
+        "recipients": {
+          "type": "string",
+          "enum": [
+            "assigned_handler",
+            "case_handlers"
+          ]
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "id",
+        "consent",
+        "source",
+        "observed_at",
+        "reported_at",
+        "received_at",
+        "purpose",
+        "recipients"
+      ]
+    },
+    "Assignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "operator_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "acknowledged_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "operator_id",
+        "acknowledged_at",
+        "received_at"
+      ]
+    },
+    "Outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "review_complete",
+            "unable_to_contact",
+            "needs_follow_up"
+          ]
+        },
+        "operator_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "reported_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "id",
+        "outcome",
+        "operator_id",
+        "reported_at",
+        "received_at",
+        "simulation"
+      ]
+    },
+    "ReportUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "report": {
+          "$ref": "#/$defs/Report"
+        },
+        "notify_operator_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "id",
+        "report",
+        "notify_operator_id",
+        "simulation"
+      ]
+    },
+    "FollowUp": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "overdue",
+            "need_help",
+            "help_request"
+          ]
+        },
+        "occurrence_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "requested",
+            "assigned_acknowledged",
+            "contact_attempted",
+            "outcome_recorded"
+          ]
+        },
+        "condition": {
+          "type": "string",
+          "const": "unknown"
+        },
+        "reported_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consent": {
+          "$ref": "#/$defs/Consent"
+        },
+        "assignment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Assignment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attempt"
+          },
+          "maxItems": 256
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Outcome"
+          },
+          "maxItems": 256
+        },
+        "report_updates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReportUpdate"
+          },
+          "maxItems": 256
+        },
+        "unresolved_need_ids": {
+          "$ref": "#/$defs/NeedIds"
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "next_due_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "id",
+        "trigger",
+        "occurrence_id",
+        "status",
+        "condition",
+        "reported_at",
+        "received_at",
+        "message",
+        "consent",
+        "assignment",
+        "attempts",
+        "outcomes",
+        "report_updates",
+        "unresolved_need_ids",
+        "next_action",
+        "next_due_at",
+        "simulation"
+      ]
+    },
+    "ProcessedEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fingerprint": {
+          "type": "string",
+          "pattern": "[0-9a-f]{64}"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        }
+      },
+      "required": [
+        "fingerprint",
+        "received_at"
+      ]
+    },
+    "Effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "reminder_simulated",
+            "review_requested",
+            "report_received",
+            "reviewer_update",
+            "assignment_acknowledged",
+            "contact_simulated",
+            "outcome_recorded",
+            "schedule_changed",
+            "schedule_paused",
+            "location_shared",
+            "location_cleared",
+            "urgent_help_required"
+          ]
+        },
+        "reported_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        },
+        "occurrence_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "request_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "operator_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "direction": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "reported_at",
+        "received_at",
+        "simulation"
+      ]
+    },
+    "PermittedNeed": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "shelter",
+            "food_water",
+            "health_support",
+            "transport",
+            "lost_documents",
+            "aid_applications",
+            "managing_money",
+            "unknown"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "uncovered",
+            "covered",
+            "partially_covered"
+          ]
+        },
+        "reported_urgency": {
+          "type": "string",
+          "enum": [
+            "urgent_safety",
+            "essentials_today",
+            "recovery_steps",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "state",
+        "reported_urgency"
+      ]
+    },
+    "LocationView": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "last_shared_location": {
+          "$ref": "#/$defs/SharedLocation"
+        },
+        "age_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000000000
+        },
+        "verified_current_destination": {
+          "type": "boolean",
+          "const": false
+        }
+      },
+      "required": [
+        "last_shared_location",
+        "age_seconds",
+        "verified_current_destination"
+      ]
+    },
+    "FollowUpRecordPayload": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FollowUpAttemptPayload"
+        },
+        {
+          "$ref": "#/$defs/FollowUpOutcomePayload"
+        }
+      ]
+    },
+    "State": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "domain_version": {
+          "type": "string",
+          "const": "check-ins.proposal.1"
+        },
+        "case_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "check_in": {
+          "$ref": "#/$defs/CheckIn"
+        },
+        "shared_location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SharedLocation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "follow_ups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FollowUp"
+          },
+          "maxItems": 256
+        },
+        "processed_events": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ProcessedEvent"
+          },
+          "maxProperties": 4096
+        },
+        "controls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "check_in",
+            "location"
+          ],
+          "properties": {
+            "check_in": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "location": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "domain_version",
+        "case_id",
+        "check_in",
+        "shared_location",
+        "follow_ups",
+        "processed_events",
+        "controls"
+      ]
+    },
+    "TransitionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/State"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Effect"
+          },
+          "maxItems": 1024
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "duplicate": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state",
+        "effects",
+        "changed",
+        "duplicate"
+      ]
+    },
+    "ScheduleView": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "occurrence_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "scheduled",
+            "due",
+            "reminder_attempted",
+            "overdue",
+            "answered",
+            "paused",
+            "canceled"
+          ]
+        },
+        "due_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "grace_deadline": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "okay_for_now",
+            "need_help",
+            "check_later"
+          ]
+        }
+      },
+      "required": [
+        "occurrence_id",
+        "status",
+        "due_at",
+        "grace_deadline",
+        "condition"
+      ]
+    },
+    "OperatorReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "overdue",
+            "need_help",
+            "help_request"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "requested",
+            "assigned_acknowledged",
+            "contact_attempted",
+            "outcome_recorded"
+          ]
+        },
+        "consent": {
+          "$ref": "#/$defs/Consent"
+        },
+        "reported_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "condition": {
+          "type": "string",
+          "const": "unknown"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Report"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "occurrence": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScheduleView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attempts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attempt"
+          },
+          "maxItems": 512
+        },
+        "relevant_needs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PermittedNeed"
+          },
+          "maxItems": 32
+        },
+        "shared_location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LocationView"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assignment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Assignment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Outcome"
+          },
+          "maxItems": 256
+        },
+        "report_updates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReportUpdate"
+          },
+          "maxItems": 256
+        },
+        "unresolved_need_ids": {
+          "$ref": "#/$defs/NeedIds"
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "next_due_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "request_id",
+        "trigger",
+        "status",
+        "consent",
+        "reported_at",
+        "received_at",
+        "condition",
+        "message",
+        "last_report",
+        "occurrence",
+        "attempts",
+        "relevant_needs",
+        "shared_location",
+        "assignment",
+        "outcomes",
+        "report_updates",
+        "unresolved_need_ids",
+        "next_action",
+        "next_due_at",
+        "simulation"
+      ]
+    },
+    "OperatorProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "case_reference": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "as_of": {
+          "$ref": "#/$defs/Timestamp"
+        },
+        "simulation": {
+          "type": "boolean",
+          "const": true
+        },
+        "response_service": {
+          "type": "string",
+          "const": "uncommitted_simulation"
+        },
+        "reviews": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OperatorReview"
+          },
+          "maxItems": 256
+        }
+      },
+      "required": [
+        "case_reference",
+        "as_of",
+        "simulation",
+        "response_service",
+        "reviews"
+      ]
+    }
+  }
+}

@@ -1,0 +1,48 @@
+--- a/README.md
++++ b/README.md
+@@ -234,3 +234,12 @@
+ .venv/bin/python -W error::ResourceWarning -m unittest discover -s tests -q
+ .venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --plan
+ ```
++
++## Household agent extension proposal
++
++New finance, application, dashboard, allowed check-in and structured-reply
++adapters are independently default-off. Integration wiring remains an owner
++review proposal; live verification remains pending user-run new-tool proof.
++See [the extension handoff](docs/parallel/agent-extensions-handoff.md) for exact
++patches, flags, offline checks and mandatory executable Bedrock assertions.
++No deployment follows from slice tests.
+--- a/docs/contracts-and-progress.md
++++ b/docs/contracts-and-progress.md
+@@ -532,3 +532,14 @@
+ 
+ 
+ | 2026-10-11 | C05 bounded live plan workflow verified | Safe log records two user-run `mode: plan` successes (12.444 and 13.516 seconds), each with three completed tools, after the schema fix. Smoke validates two saved revisions, retained user-reported online completion, blocked office route, source attribution, unknown costs/eligibility, provisional plan, sourced saved reply, unchanged domains/policy and replay without duplicate writes. Three slices remain READY_FOR_INTEGRATION and full C05 IN_PROGRESS; synthetic proof does not verify agency outcomes or live Colorado extraction. No private config read; docs only; usage 1% remaining |
++
++### Household agent extensions — separate proposal gates
++
++The [extension handoff](parallel/agent-extensions-handoff.md) records the new
++default-off adapters, structured questions/exact answer correlation, actual
++pinned-SDK outgoing schemas and direct operator/consent authorization checks.
++Owned slice readiness is recorded separately from disposable proposed assembly.
++Shared integrated readiness remains pending owner review/application/acceptance;
++new-tool LIVE Bedrock verification remains pending genuine user-run evidence.
++Existing text/planner proof cannot satisfy this new proof. CaseService owns every
++durable effect. No full-component, production or deployment claim is added.
+--- a/docs/strands-capabilities.md
++++ b/docs/strands-capabilities.md
+@@ -215,3 +215,13 @@
+ 108 focused checks and all 325 non-HTTP checks pass among 330 discovered, including
+ 21 real-SDK checks. Live `--plan`, P2 review and broader C05 gates remain pending.
+ [Updated handoff](planner-integration.md#saved-plan-revision--second-slice-ready-for-integration).
++
++### New household adapters — review proposal
++
++Executable extension factories expose independently enabled finance updates,
++calculation/scenarios, application preparation/reports, dashboard publication,
++allowed check-ins and structured replies. Every provider-facing input has an
++object root; financial union validation remains authoritative inside the nested
++update envelope. Pinned Strands 1.59.0 transport checks are offline evidence.
++Shared wiring/integrated acceptance and genuine new-tool live proof remain
++separate pending gates. [Exact patch and user-run proof](parallel/agent-extensions-handoff.md).

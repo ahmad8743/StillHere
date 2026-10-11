@@ -1,0 +1,47 @@
+[Unit]
+Description=StillHere private loopback case API
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=stillhere
+Group=stillhere
+WorkingDirectory=/opt/stillhere/current
+EnvironmentFile=/etc/stillhere/runtime.conf
+LoadCredential=aws-credentials:/etc/stillhere/aws-credentials
+Environment=AWS_SHARED_CREDENTIALS_FILE=%d/aws-credentials
+Environment=AWS_CONFIG_FILE=/dev/null
+Environment=AWS_EC2_METADATA_DISABLED=true
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+UnsetEnvironment=AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_PROFILE AWS_DEFAULT_PROFILE PYTHONPATH PYTHONHOME
+ExecStart=/opt/stillhere/current/.venv/bin/python -m backend.stillhere.server --db /var/lib/stillhere/cases.sqlite3 --port 8000
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=90s
+KillSignal=SIGINT
+UMask=0077
+StateDirectory=stillhere
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LimitCORE=0
+MemoryMax=2G
+TasksMax=128
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

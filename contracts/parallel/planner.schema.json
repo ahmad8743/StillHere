@@ -1,0 +1,1841 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stillhere.local/contracts/parallel/planner.schema.json",
+  "title": "C05 proposed additions; not the frozen shared contract",
+  "description": "Pure planner boundary only. CaseService authorizes, validates provenance and owns durable writes. Integrate expanded action/evaluation/history shapes after P1/P2 review.",
+  "$defs": {
+    "PlannerInstant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+    },
+    "PlannerDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "PlannerDependencyLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "action_id",
+        "rule_id",
+        "rule_version",
+        "node_id",
+        "kind",
+        "target_id",
+        "target_rule_id",
+        "target_rule_version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "action_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "node_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "evidence",
+            "action",
+            "confirmation"
+          ]
+        },
+        "target_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "target_rule_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_rule_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PlannerEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "case_id",
+        "key",
+        "available",
+        "state",
+        "observed_at",
+        "expires_at",
+        "source_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "case_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "available": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "unknown",
+            "user_reported",
+            "source_supported",
+            "conflicting",
+            "stale"
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
+      }
+    },
+    "PlannerConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "case_id",
+        "action_id",
+        "rule_id",
+        "rule_version",
+        "node_id",
+        "value",
+        "state",
+        "observed_at",
+        "expires_at",
+        "source_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "case_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "action_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "node_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "unknown",
+            "user_reported",
+            "source_supported",
+            "conflicting",
+            "stale"
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
+      }
+    },
+    "PlannerCostItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "amount_cents",
+        "date",
+        "due_at",
+        "state",
+        "observed_at",
+        "source_ids",
+        "essential"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerDate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "due_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "unknown",
+            "user_reported",
+            "source_supported",
+            "conflicting",
+            "stale"
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "essential": {
+          "type": "boolean"
+        }
+      }
+    },
+    "PlannerCostUpdate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "rule_id",
+        "rule_version",
+        "items"
+      ],
+      "properties": {
+        "action_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/PlannerCostItem"
+          }
+        }
+      }
+    },
+    "PlannerPriority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "priority"
+      ],
+      "properties": {
+        "action_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        }
+      }
+    },
+    "PlannerDeadline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "deadline"
+      ],
+      "properties": {
+        "action_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "deadline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerDate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "PlannerCompletionCorrection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "completion_event_id",
+        "reason_code"
+      ],
+      "properties": {
+        "action_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "completion_event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "reason_code": {
+          "enum": [
+            "reported_in_error",
+            "not_completed",
+            "wrong_action"
+          ]
+        }
+      }
+    },
+    "PlannerAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "origin",
+        "program_id",
+        "rule_id",
+        "rule_version",
+        "path_id",
+        "title",
+        "purpose",
+        "status",
+        "execution_mode",
+        "official_url",
+        "requirements",
+        "constraints",
+        "costs",
+        "deadline",
+        "source_ids",
+        "source_records",
+        "reason",
+        "blockers",
+        "questions",
+        "alternative_ids",
+        "input_case_version",
+        "is_current",
+        "history",
+        "inability_reason",
+        "input_fact_fingerprint",
+        "input_catalog_version",
+        "input_freshness"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "origin": {
+          "enum": [
+            "recovery_planner"
+          ]
+        },
+        "program_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "rule_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "path_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "waiting",
+            "blocked",
+            "completed",
+            "skipped"
+          ]
+        },
+        "execution_mode": {
+          "enum": [
+            "online",
+            "in_person",
+            "mail"
+          ]
+        },
+        "official_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "requirements": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/PlannerRequirementEvaluation"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/PlannerRequirementEvaluation"
+          }
+        },
+        "costs": {
+          "$ref": "#/$defs/RecoveryCosts"
+        },
+        "deadline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerDate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "source_records": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/ProgramRuleSource"
+          }
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "blockers": {
+          "type": "array",
+          "maxItems": 34,
+          "items": {
+            "$ref": "#/$defs/RecoveryBlocker"
+          }
+        },
+        "questions": {
+          "type": "array",
+          "maxItems": 49,
+          "items": {
+            "$ref": "#/$defs/RecoveryQuestion"
+          }
+        },
+        "alternative_ids": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "is_current": {
+          "type": "boolean"
+        },
+        "history": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/PlannerTaskHistory"
+          }
+        },
+        "inability_reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "no_car",
+                "transport_unavailable",
+                "no_internet",
+                "missing_documents",
+                "cannot_pay",
+                "appointment_unavailable",
+                "other"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input_fact_fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "input_catalog_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "input_freshness": {
+          "enum": [
+            "current",
+            "stale"
+          ]
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "dependency_links": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/PlannerDependencyLink"
+          }
+        },
+        "cost_items": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/PlannerCostItem"
+          }
+        }
+      }
+    },
+    "PlannerRequirementEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "operator",
+        "children",
+        "requirement",
+        "state",
+        "fact_state",
+        "observed_at",
+        "reason",
+        "source_ids"
+      ],
+      "properties": {
+        "node_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "operator": {
+          "enum": [
+            "requirement",
+            "all_of",
+            "any_of"
+          ]
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "requirement": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleRequirement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "satisfied",
+            "unmet",
+            "unknown"
+          ]
+        },
+        "fact_state": {
+          "anyOf": [
+            {
+              "enum": [
+                "missing",
+                "unknown",
+                "user_reported",
+                "source_supported",
+                "conflicting",
+                "stale"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "enum": [
+            "fact_missing",
+            "fact_unknown",
+            "fact_conflicting",
+            "fact_stale",
+            "fact_invalid",
+            "observation_unusable",
+            "authority_unverified",
+            "reported_match",
+            "reported_mismatch",
+            "and_or_evaluation",
+            "no_car_transport_unknown",
+            "evidence_match",
+            "evidence_mismatch",
+            "evidence_unusable",
+            "confirmation_match",
+            "confirmation_mismatch",
+            "confirmation_unverified",
+            "dependency_completed",
+            "dependency_unfinished",
+            "dependency_skipped",
+            "dependency_scope_unresolved",
+            "dependency_cycle",
+            "dependency_stale",
+            "dependency_completion_unverified"
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
+      }
+    },
+    "PlannerTaskHistory": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TaskReportHistory"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "event_id",
+            "from_status",
+            "status",
+            "reason_code",
+            "occurred_at",
+            "received_at",
+            "provenance",
+            "correction_of",
+            "correction_reason"
+          ],
+          "properties": {
+            "event_id": {
+              "$ref": "#/$defs/Id"
+            },
+            "from_status": {
+              "enum": [
+                "completed"
+              ]
+            },
+            "status": {
+              "enum": [
+                "waiting",
+                "blocked"
+              ]
+            },
+            "reason_code": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "no_car",
+                    "transport_unavailable",
+                    "no_internet",
+                    "missing_documents",
+                    "cannot_pay",
+                    "appointment_unavailable",
+                    "other"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "occurred_at": {
+              "$ref": "#/$defs/Instant"
+            },
+            "received_at": {
+              "$ref": "#/$defs/Instant"
+            },
+            "provenance": {
+              "enum": [
+                "user_reported"
+              ]
+            },
+            "correction_of": {
+              "$ref": "#/$defs/Id"
+            },
+            "correction_reason": {
+              "enum": [
+                "reported_in_error",
+                "not_completed",
+                "wrong_action"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "PlannerCostExport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "plan_version",
+        "as_of",
+        "currency",
+        "paths",
+        "time_zone"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "plan_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "as_of": {
+          "$ref": "#/$defs/PlannerInstant"
+        },
+        "currency": {
+          "enum": [
+            "USD"
+          ]
+        },
+        "paths": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/PlannerCostPath"
+          }
+        },
+        "time_zone": {
+          "type": "string",
+          "format": "iana-time-zone",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "PlannerCostPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_id",
+        "rule_id",
+        "rule_version",
+        "status",
+        "is_current",
+        "input_freshness",
+        "alternative_ids",
+        "selectable",
+        "cost_state",
+        "cost_items",
+        "commitments",
+        "warnings"
+      ],
+      "properties": {
+        "action_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "waiting",
+            "blocked",
+            "completed",
+            "skipped"
+          ]
+        },
+        "is_current": {
+          "type": "boolean"
+        },
+        "input_freshness": {
+          "enum": [
+            "current",
+            "stale"
+          ]
+        },
+        "alternative_ids": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "selectable": {
+          "type": "boolean"
+        },
+        "cost_state": {
+          "enum": [
+            "known",
+            "incomplete"
+          ]
+        },
+        "cost_items": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/PlannerCostItem"
+          }
+        },
+        "commitments": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/PlannerCostCommitment"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 40,
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        }
+      }
+    },
+    "PlannerCostCommitment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "action_id",
+        "planner_cost_id",
+        "category",
+        "date",
+        "due_at",
+        "amount_cents",
+        "essential",
+        "priority",
+        "source_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "action_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "planner_cost_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "date": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerDate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "due_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlannerInstant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "essential": {
+          "type": "boolean"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
+      }
+    },
+    "PlannerSelectionProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "plan_version",
+        "state",
+        "selected_action_ids",
+        "retained_commitment_ids",
+        "remove_commitment_ids",
+        "add_commitments",
+        "issues",
+        "hypothetical"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "plan_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "enum": [
+            "proposed",
+            "needs_clarification"
+          ]
+        },
+        "selected_action_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "retained_commitment_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "remove_commitment_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "add_commitments": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/PlannerCostCommitment"
+          }
+        },
+        "issues": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "hypothetical": {
+          "enum": [
+            true
+          ]
+        }
+      }
+    },
+    "Id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "RecoveryCosts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "fee_cents",
+        "transport_cents",
+        "cost_date",
+        "source_ids"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "unknown"
+          ]
+        },
+        "fee_cents": {
+          "type": "null"
+        },
+        "transport_cents": {
+          "type": "null"
+        },
+        "cost_date": {
+          "type": "null"
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
+      }
+    },
+    "ProgramRuleSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "url",
+        "issuer",
+        "jurisdiction",
+        "retrieved_at",
+        "updated_at",
+        "reviewed_at",
+        "expires_at",
+        "verification_state",
+        "freshness",
+        "data_mode",
+        "supporting_sections"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "jurisdiction": {
+          "$ref": "#/$defs/ResourceCoverage"
+        },
+        "retrieved_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewed_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "verification_state": {
+          "enum": [
+            "official_page_reviewed"
+          ]
+        },
+        "freshness": {
+          "enum": [
+            "current",
+            "stale",
+            "unknown"
+          ]
+        },
+        "data_mode": {
+          "enum": [
+            "seeded",
+            "cached"
+          ]
+        },
+        "supporting_sections": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "ResourceCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "country",
+        "state"
+      ],
+      "properties": {
+        "country": {
+          "enum": [
+            "US"
+          ]
+        },
+        "state": {
+          "anyOf": [
+            {
+              "enum": [
+                "AK",
+                "AL",
+                "AR",
+                "AS",
+                "AZ",
+                "CA",
+                "CO",
+                "CT",
+                "DC",
+                "DE",
+                "FL",
+                "GA",
+                "GU",
+                "HI",
+                "IA",
+                "ID",
+                "IL",
+                "IN",
+                "KS",
+                "KY",
+                "LA",
+                "MA",
+                "MD",
+                "ME",
+                "MI",
+                "MN",
+                "MO",
+                "MP",
+                "MS",
+                "MT",
+                "NC",
+                "ND",
+                "NE",
+                "NH",
+                "NJ",
+                "NM",
+                "NV",
+                "NY",
+                "OH",
+                "OK",
+                "OR",
+                "PA",
+                "PR",
+                "RI",
+                "SC",
+                "SD",
+                "TN",
+                "TX",
+                "UT",
+                "VA",
+                "VI",
+                "VT",
+                "WA",
+                "WI",
+                "WV",
+                "WY"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$"
+    },
+    "RecoveryBlocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "fact_key",
+        "code",
+        "message",
+        "source_ids"
+      ],
+      "properties": {
+        "node_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fact_key": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[a-z][a-z0-9_]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
+      }
+    },
+    "RecoveryQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "fact_key",
+        "code",
+        "message",
+        "source_ids"
+      ],
+      "properties": {
+        "node_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fact_key": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "pattern": "^[a-z][a-z0-9_]*$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
+      }
+    },
+    "RuleRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "kind",
+        "label",
+        "expected",
+        "timing",
+        "evidence_state"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "kind": {
+          "enum": [
+            "fact",
+            "evidence",
+            "action",
+            "authority_confirmation"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "expected": {
+          "type": "boolean"
+        },
+        "timing": {
+          "enum": [
+            "before_start",
+            "during_application",
+            "before_receipt"
+          ]
+        },
+        "evidence_state": {
+          "enum": [
+            "unknown"
+          ]
+        }
+      }
+    },
+    "PlannerCycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "action_ids",
+        "link_ids"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "dependency_cycle"
+          ]
+        },
+        "action_ids": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "link_ids": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
+      }
+    },
+    "PlannerPlan": {
+      "type": "object",
+      "required": [
+        "state",
+        "version",
+        "actions",
+        "blockers",
+        "questions"
+      ],
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pending_input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "maxItems": 32
+        },
+        "blockers": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "maxItems": 1200
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          },
+          "maxItems": 1600
+        },
+        "evaluation_query": {
+          "$ref": "#/$defs/ProgramRuleQuery"
+        },
+        "catalog_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "computed_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "household_eligibility": {
+          "enum": [
+            "unknown"
+          ]
+        },
+        "revisions": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "event_id",
+              "received_at",
+              "input_case_version",
+              "program_id",
+              "reason"
+            ],
+            "properties": {
+              "event_id": {
+                "$ref": "#/$defs/Id"
+              },
+              "received_at": {
+                "$ref": "#/$defs/Instant"
+              },
+              "input_case_version": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "program_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80,
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "reason": {
+                "enum": [
+                  "published_requirements_reassessed"
+                ]
+              }
+            }
+          }
+        },
+        "dependency_cycles": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/PlannerCycle"
+          }
+        },
+        "dependency_as_of": {
+          "$ref": "#/$defs/PlannerInstant"
+        },
+        "dependency_input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "description": "Validate owned actions with PlannerAction separately; preserve other-domain action objects. CaseService supplies authority and case-version guards."
+    },
+    "ProgramRuleQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program_id",
+        "requested_version",
+        "issuing_state",
+        "jurisdiction_state",
+        "input_case_version",
+        "as_of"
+      ],
+      "properties": {
+        "program_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "requested_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issuing_state": {
+          "anyOf": [
+            {
+              "enum": [
+                "AK",
+                "AL",
+                "AR",
+                "AS",
+                "AZ",
+                "CA",
+                "CO",
+                "CT",
+                "DC",
+                "DE",
+                "FL",
+                "GA",
+                "GU",
+                "HI",
+                "IA",
+                "ID",
+                "IL",
+                "IN",
+                "KS",
+                "KY",
+                "LA",
+                "MA",
+                "MD",
+                "ME",
+                "MI",
+                "MN",
+                "MO",
+                "MP",
+                "MS",
+                "MT",
+                "NC",
+                "ND",
+                "NE",
+                "NH",
+                "NJ",
+                "NM",
+                "NV",
+                "NY",
+                "OH",
+                "OK",
+                "OR",
+                "PA",
+                "PR",
+                "RI",
+                "SC",
+                "SD",
+                "TN",
+                "TX",
+                "UT",
+                "VA",
+                "VI",
+                "VT",
+                "WA",
+                "WI",
+                "WV",
+                "WY"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "jurisdiction_state": {
+          "enum": [
+            "reported",
+            "unknown",
+            "conflicting",
+            "stale",
+            "invalid"
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "as_of": {
+          "$ref": "#/$defs/Instant"
+        }
+      }
+    },
+    "TaskReportHistory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "from_status",
+        "status",
+        "reason_code",
+        "occurred_at",
+        "received_at",
+        "provenance"
+      ],
+      "properties": {
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "from_status": {
+          "enum": [
+            "ready",
+            "waiting",
+            "blocked",
+            "completed",
+            "skipped"
+          ]
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "waiting",
+            "blocked",
+            "completed",
+            "skipped"
+          ]
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "enum": [
+                "no_car",
+                "transport_unavailable",
+                "no_internet",
+                "missing_documents",
+                "cannot_pay",
+                "appointment_unavailable",
+                "other"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "occurred_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "received_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "provenance": {
+          "enum": [
+            "user_reported"
+          ]
+        }
+      }
+    }
+  },
+  "$comment": "No public command/tool or live-provider readiness is implied."
+}

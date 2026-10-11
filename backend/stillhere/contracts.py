@@ -2,7 +2,7 @@
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -47,24 +47,57 @@ def _validate(schema, value, path):
                 continue
         else:
             raise InvalidInput(path, "Value does not match an allowed shape.")
+    if "oneOf" in schema:
+        matches = 0
+        for alternative in schema["oneOf"]:
+            try:
+                _validate(alternative, value, path)
+                matches += 1
+            except InvalidInput:
+                pass
+        if matches != 1:
+            raise InvalidInput(path, "Value must match exactly one allowed shape.")
+    for child in schema.get("allOf", []):
+        _validate(child, value, path)
+    if "if" in schema:
+        try:
+            _validate(schema["if"], value, path)
+            branch = "then"
+        except InvalidInput:
+            branch = "else"
+        _validate(schema.get(branch, {}), value, path)
+    if "not" in schema:
+        try:
+            _validate(schema["not"], value, path)
+        except InvalidInput:
+            pass
+        else:
+            raise InvalidInput(path, "Value matches a forbidden shape.")
+    if "const" in schema and canonical_json(value) != canonical_json(schema["const"]):
+        raise InvalidInput(path, "Value must equal the required constant.")
     expected = schema.get("type")
     checks = {
         "object": isinstance(value, dict), "array": isinstance(value, list),
         "string": isinstance(value, str),
         "integer": type(value) in (int, float) and value % 1 == 0,
+        "number": type(value) in (int, float),
         "boolean": type(value) is bool, "null": value is None,
     }
     if expected and not any(checks[kind] for kind in ([expected] if isinstance(expected, str) else expected)):
         raise InvalidInput(path, f"Expected {expected}.")
-    if "enum" in schema and value not in schema["enum"]:
+    if "enum" in schema and canonical_json(value) not in {canonical_json(item) for item in schema["enum"]}:
         raise InvalidInput(path, "Value is not an allowed choice.")
     if isinstance(value, dict):
+        if not schema.get("minProperties", 0) <= len(value) <= schema.get("maxProperties", float("inf")):
+            raise InvalidInput(path, "Object size is outside the allowed range.")
         for key in schema.get("required", []):
             if key not in value:
                 raise InvalidInput(f"{path}.{key}", "Required field is missing.")
         properties = schema.get("properties", {})
         extra = schema.get("additionalProperties", True)
         for key, child in value.items():
+            if "propertyNames" in schema:
+                _validate(schema["propertyNames"], key, f"{path}.{key}")
             if key in properties:
                 _validate(properties[key], child, f"{path}.{key}")
             elif extra is False:
@@ -72,8 +105,8 @@ def _validate(schema, value, path):
             elif isinstance(extra, dict):
                 _validate(extra, child, f"{path}.{key}")
     if isinstance(value, list):
-        if len(value) > schema.get("maxItems", float("inf")):
-            raise InvalidInput(path, "Too many selections.")
+        if not schema.get("minItems", 0) <= len(value) <= schema.get("maxItems", float("inf")):
+            raise InvalidInput(path, "Array size is outside the allowed range.")
         if schema.get("uniqueItems") and len({canonical_json(child) for child in value}) != len(value):
             raise InvalidInput(path, "Selections must be unique.")
         for index, child in enumerate(value):
@@ -85,15 +118,22 @@ def _validate(schema, value, path):
             raise InvalidInput(path, "String does not match the required format.")
         try:
             if schema.get("format") == "date-time":
+                if "T" not in value:
+                    raise ValueError()
                 instant = datetime.fromisoformat(value.replace("Z", "+00:00"))
                 if instant.tzinfo is None or instant.utcoffset().total_seconds() != 0:
+                    raise ValueError()
+            if schema.get("format") == "date":
+                if date.fromisoformat(value).isoformat() != value:
                     raise ValueError()
             if schema.get("format") == "iana-time-zone":
                 ZoneInfo(value)
         except (ValueError, ZoneInfoNotFoundError):
             raise InvalidInput(path, "Use a valid UTC instant or IANA time zone.") from None
     if type(value) in (int, float) and value < schema.get("minimum", float("-inf")):
-        raise InvalidInput(path, "Integer is below the allowed minimum.")
+        raise InvalidInput(path, "Number is below the allowed minimum.")
+    if type(value) in (int, float) and value > schema.get("maximum", float("inf")):
+        raise InvalidInput(path, "Number is above the allowed maximum.")
 
 
 def empty_case(case_id, time_zone, now):

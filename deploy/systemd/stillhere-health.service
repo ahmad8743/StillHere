@@ -1,0 +1,19 @@
+[Unit]
+Description=StillHere local HTTP and SQLite health
+
+[Service]
+Type=oneshot
+User=stillhere
+Group=stillhere
+WorkingDirectory=/opt/stillhere/current
+ExecStart=/opt/stillhere/current/.venv/bin/python deploy/healthcheck.py --db /var/lib/stillhere/cases.sqlite3
+TimeoutStartSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# mode=ro check may need SQLite WAL shared-memory sidecars.
+ReadWritePaths=/var/lib/stillhere
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LimitCORE=0

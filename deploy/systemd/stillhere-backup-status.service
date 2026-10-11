@@ -1,0 +1,15 @@
+[Unit]
+Description=StillHere backup age and disk capacity check
+
+[Service]
+Type=oneshot
+User=stillhere
+Group=stillhere
+ExecStart=/usr/bin/python3 /opt/stillhere/current/deploy/backup_status.py
+TimeoutStartSec=30s
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+LimitCORE=0

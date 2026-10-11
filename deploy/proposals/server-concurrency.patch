@@ -1,0 +1,45 @@
+--- a/backend/stillhere/server.py
++++ b/backend/stillhere/server.py
+@@ -2,6 +2,7 @@
+ 
+ import argparse
+ import json
++import threading
+ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+ from urllib.parse import unquote, urlsplit
+ 
+@@ -20,7 +21,34 @@
+     def __init__(self, address, service, agent_runtime=None):
+         self.service = service
+         self.agent_runtime = agent_runtime or AgentRuntime(service)
++        self.request_slots = threading.BoundedSemaphore(32)
+         super().__init__(address, Handler)
++
++
++    def get_request(self):
++        request, address = super().get_request()
++        request.settimeout(15)
++        return request, address
++
++    def process_request(self, request, client_address):
++        if not self.request_slots.acquire(blocking=False):
++            self.shutdown_request(request)
++            return
++        try:
++            super().process_request(request, client_address)
++        except BaseException:
++            self.request_slots.release()
++            raise
++
++    def process_request_thread(self, request, client_address):
++        try:
++            super().process_request_thread(request, client_address)
++        finally:
++            self.request_slots.release()
++
++    def handle_error(self, request, client_address):
++        # No raw traceback, body, token, case ID or provider exception.
++        pass
+ 
+ 
+ class Handler(BaseHTTPRequestHandler):

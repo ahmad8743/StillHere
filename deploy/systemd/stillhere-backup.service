@@ -1,0 +1,22 @@
+[Unit]
+Description=StillHere consistent SQLite backup
+
+[Service]
+Type=oneshot
+User=stillhere
+Group=stillhere
+WorkingDirectory=/opt/stillhere/current
+ExecStart=/opt/stillhere/current/.venv/bin/python deploy/backup.py backup --source /var/lib/stillhere/cases.sqlite3 --directory /var/backups/stillhere
+UMask=0077
+TimeoutStartSec=150s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# SQLite read-only WAL readers may need to create shared-memory sidecars.
+# The backup tool opens the database itself with mode=ro.
+ReadWritePaths=/var/lib/stillhere /var/backups/stillhere
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+LimitCORE=0
+

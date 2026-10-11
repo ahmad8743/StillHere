@@ -1,12 +1,12 @@
 # StillHere
 
-P1's implemented foundation is **C01: private household cases and intake persistence**. It creates a recovery file with optional initial selections, resumes it, and applies auditable `fact.correct` and `intake.submit` commands. The product scope lives in [the specification](docs/project-specification.md); ownership and progress live in [the contracts](docs/contracts-and-progress.md).
+P1's implemented foundation is **C01: private household cases and intake persistence**, with **C01-facing Strands adapters ready for integration**. The backend creates/resumes cases, applies auditable `fact.correct` and `intake.submit` commands, and accepts durable `conversation.message` turns. The product scope lives in [the specification](docs/project-specification.md); ownership and progress live in [the contracts](docs/contracts-and-progress.md).
 
-The confirmed deployment direction is **Akamai Cloud for the entire application**, with the **Strands Agents SDK** running in the backend and calling an **AWS Bedrock model**. The uncommitted first C02 attempt was rolled back when this direction changed; C02 is planned, and the case/intake contracts remain at `0.1`. See the [architecture and reference handoff](docs/infrastructure-direction.md).
+The confirmed deployment direction is **Akamai Cloud for the entire application**, with the **Strands Agents SDK** running in the backend and calling an **AWS Bedrock model**. The bounded C02 runtime implements scoped tools, saved user/assistant turns, replay, conflicts, provider failures, and usage limits. **This first slice is READY_FOR_INTEGRATION after a successful user-run live Bedrock proof.** The current model choice is Claude Sonnet 4.5. Broader C02 tools remain future work; contracts remain at `0.1`. See the [agent integration handoff](docs/agent-integration.md) and [infrastructure direction](docs/infrastructure-direction.md).
 
 ## Run and verify
 
-Requires Python 3.11+ with the system IANA time-zone database. No packages, provider credentials, or network downloads are needed. Run from the repository root:
+Requires Python 3.11+ with the system IANA time-zone database. The deterministic case service needs no packages or provider credentials. Install `backend/requirements-agent.txt` for Strands; configure the blank private `.env.local` using `.env.example`. The [handoff](docs/agent-integration.md#run-locally-and-configure-bedrock) includes the live server and disposable Bedrock proof commands. Run from the repository root:
 
 ```sh
 python3 -m backend.stillhere.server --db var/cases.sqlite3 --port 8000
@@ -18,7 +18,7 @@ The service listens on `127.0.0.1`. SQLite data survives restarts. This is a loc
 python3 -W error::ResourceWarning -m unittest discover -s tests -v
 ```
 
-The 26 tests use temporary databases. The HTTP checks require permission to bind an ephemeral loopback port. They cover the documented empty snapshot, restart/resume, isolation, duplicate events, conflicting writes, concurrent writers, audit times, schema validation, unauthorized channels, pending calculations, and atomic rollback after storage failure, plus intake skips/merges and upgrades from the first slice's database.
+The full suite has 208 checks using temporary databases. Seventeen real-SDK checks require the optional Strands dependency, and two configuration-loader checks require python-dotenv; absent dependencies produce explicit skips. No automated check loads the user's `.env.local` or calls Bedrock/public incident APIs. The HTTP checks require permission to bind an ephemeral loopback port. They cover case/intake access, restart/resume, replay/conflicts, validation and rollback; agent limits/failures, safe diagnostics and mocked Converse transport; and C03 source normalization, geography/freshness, provider failures, durable attribution, stale inputs and SDK integration; reviewed C04 referrals and rule graphs; bounded official transport, separate public submissions, manual publication authority, immutable history, privacy, rollback and safe smoke modes. Current validation passes all 203 non-HTTP checks, including the strict fetch-example checks; five HTTP checks are blocked by this host's loopback-bind policy and need a local rerun. See the [C03 handoff](docs/incident-integration.md) for the separately recorded live public-source proof and the optional Sonnet/C03 smoke command.
 
 ## HTTP boundary for P2
 
@@ -29,7 +29,7 @@ Use `contracts/case-service.schema.json` (`$defs`) for client types and mocks. A
 | `POST /v1/sessions` | `SessionRequest`: `{"contract_version":"0.1"}` | HTTP 201, `SessionResult`; server issues a household bearer token |
 | `POST /v1/cases` | `CreateCaseRequest`: version, stable `event_id`, IANA `time_zone`; optional `intake` and `occurred_at` | HTTP 200, `CommandResult` containing the complete snapshot |
 | `GET /v1/cases/{case_id}` | Bearer token and contract header | HTTP 200, `CaseSnapshot` |
-| `POST /v1/commands` | `CommandEnvelope`; `fact.correct` with `FactCorrectionPayload` or `intake.submit` with `IntakeSelections` | `CommandResult` |
+| `POST /v1/commands` | `CommandEnvelope`; `fact.correct` with `FactCorrectionPayload` or `intake.submit` with `IntakeSelections`, or `conversation.message` with `ConversationMessagePayload` | `CommandResult` |
 | `GET /health` | None | Version, status, and implemented command types |
 
 HTTP status codes: `200` applied/already applied, `409` version conflict, `400` rejected input/unsupported command, `401` invalid session, `403` forbidden authority channel, `404` inaccessible or absent case, and `503` unavailable storage. A wrong household sees the same error for an existing case and a missing case. Malformed transport, unusable/missing event IDs, and read/session errors use `AccessError`; well-formed case/command submissions use `CommandResult`, including rejection. Responses disable HTTP caching. POST bodies must use `application/json`, unique keys, finite numbers, and a body no larger than 64 KiB.
@@ -108,7 +108,7 @@ Missing fields preserve existing answers. Explicit `null`, `unsure`, and empty s
 
 Command `occurred_at` supplies intake observation time. Creation can supply an optional `occurred_at`; otherwise observation time is the server receipt time. Creation plus intake commits atomically at case version 1. Later accepted intake commands increment the version once, including a completely skipped submission. Extra intake fields are rejected; additional interpreted facts still use the existing flexible `fact.correct` path.
 
-This slice persists intake. Source retrieval, urgent referrals, follow-up questions, and planning remain future C02/C04/C05 behavior; resources stay honestly labeled `not_requested`.
+Intake persistence is available directly and through the opt-in `submit_intake` adapter. The agent can ask plain-text follow-up questions; structured choices and planning remain future slices. C03 incident retrieval and C04 referrals/rules are independently opt-in; resources stay `not_requested` until their retrieval tool runs.
 
 ## P2 browser prototype
 
@@ -132,6 +132,8 @@ The finance page now includes an optional **Connect a test bank** section. A sep
 
 Create a [Plaid developer account](https://dashboard.plaid.com/), add the Sandbox client ID and secret to the ignored `.env.plaid` file (copy `.env.example` if needed), then run `npm run plaid:sandbox`. Open the printed `http://127.0.0.1:4100/#finance` address. The connector requires Node.js 18+ and adds no dependencies. It supports Sandbox only; access tokens/sync state are memory-only until P1 supplies protected durable storage. Transactions are review-only, and budget balance copies require the existing October 10 demo planning date. [Full setup and P1 handoff](docs/p2-plaid-setup.md).
 
+**C08 finance and C09 intake/chat are IN_PROGRESS.** Synthetic Node checks reproduce all four canonical forecast gaps/ending positions without mutating the ledger. The initial snapshot and five mock results pass the shared `0.1` schemas, including intake, correction, replay and conflict checks. Browser rendering, complete finance validation/reconciliation, and frontend/backend integration remain pending. The prototype's notice-city controls are local demo state; check-in and last-shared-location command controls are still unimplemented.
+
 ## Integration rules
 
 - P1 code lives in `backend/stillhere/`; shared definitions live in `contracts/`. P2's browser prototype, first synthetic CaseSnapshot fixture, browser-local mock adapter, and deterministic finance forecast live in `frontend/`. Remaining F01–F07 fixtures and P2 features are still pending. Synthetic values in `tests/` are C01 verification data.
@@ -141,9 +143,110 @@ Create a [Plaid developer account](https://dashboard.plaid.com/), add the Sandbo
 - Snapshots and accepted audit events commit in one SQLite transaction. New audit entries retain the whole previous case alongside the existing prior-fact field, original observation/occurrence time, first receipt time, and application receipt time. An automatic additive migration preserves existing databases, sessions, and accepted-event retries; historical entries retain their original prior-fact audit and have no reconstructed whole-case history. Only token digests are stored; request bodies/tokens are not logged.
 - `commands.py` owns deterministic domain handlers and their payload-schema mapping. The service retains authorization, idempotency, concurrency, and persistence for every registered command. Case creation reuses the same intake transformation. Add future validated handlers here instead of duplicating the write path.
 - Corrections and intake submissions conservatively mark existing plan/finance outputs `pending`, preserving completed actions and the last calculations. The additive `pending_input_case_version` identifies the new work; finance `input_case_version` still identifies the retained calculation. Render retained results as pending/stale. This slice does not run a planner or forecast.
-- The snapshot schema fixes top-level sections and basic types. Populated source, action, financial, check-in, and other domain records remain to be defined by their owners. The descriptor schema validates kind/shape; record-reference validation belongs to the future publisher. The local validator implements only the schema vocabulary currently used; update it when introducing schema keywords.
+- The snapshot schema fixes top-level sections, typed conversation turns, and basic types. Populated source, action, financial, check-in, and other domain records remain to be defined by their owners. The descriptor schema validates kind/shape; record-reference validation belongs to the future publisher. The local validator implements only the schema vocabulary currently used; update it when introducing schema keywords.
 - Household sessions accept `chat`, `dashboard`, and `text_simulator`; they cannot acquire operator/system authority by selecting a channel or supplying a role. All other baseline command types return `unsupported_command` until their handlers exist. Keep P2 mocks labeled and separate from real endpoint capability.
 
-The full contract freeze still requires P2 review, remaining domain schemas, fixtures, and the Strands/Bedrock proof. C02–C15 and deployment are not implemented by this slice. The next P1 slice is a bounded Strands/Bedrock tool-call proof using this case service. Its [planned boundary and tool-extension rules](docs/contracts-and-progress.md#c02-first-slice-and-tool-extensions--planned) limit the first tools to case reading and fact correction, with separate adapters registered through an allowlist. Strands can later call `CaseService` methods through validated tools using an authenticated context; no model text supplies an authorization scope.
+The full contract freeze still requires P2 review, remaining domain schemas, and fixtures. C01-facing Strands adapters and the bounded C02 runtime are ready for integration; the live Bedrock tool/update/reply/replay proof has passed. C03 incident adapters and the opt-in `get_incident_context` tool are now ready for integration, with live public-source checks and offline populated/failure/SDK evidence. Enable `STILLHERE_AGENT_ENABLE_INCIDENTS=true` to use them. C01 and the broader C02 component remain in progress. P2's C08 finance and C09 intake/chat prototypes are in progress in `frontend/`; remaining domain features, UI/API integration and deployment are pending. C04's five bounded slices are ready for integration: reviewed referrals, scoped rule graphs, bounded official fetching, separate public candidate/discrepancy submission and local manual publication with immutable history. The earlier user-run rules/resources proofs passed; the new knowledge failure/discrepancy branch passes at 13.569 seconds. Successful national USAGov fetching and the strict model/reply/replay proof now pass; Colorado live candidate extraction remains pending. Full policy coverage and household eligibility remain unknown. See the [referral handoff](docs/resource-integration.md), [rule handoff](docs/program-rules-integration.md), and [fetch/review handoff and user test checklist](docs/knowledge-review-integration.md). Current C05 validation passes 75 focused planner/rule/SDK checks. Later shared discovery runs 295 checks with 290 passes and five existing HTTP loopback-bind errors, including 57 concurrent finance checks. The required live-fetch example passes; C05's first read-only deterministic planner slice is ready for integration, with full C05 in progress. C09 implementation is deferred for this chat. The [agent handoff](docs/agent-integration.md) covers the allowlist, durable chat states, configuration and next adapter rules. `CaseService` owns durable writes with backend-supplied authenticated context.
 
-For local reset, stop the server and remove `var/cases.sqlite3` and any matching `-wal`/`-shm` files. This erases synthetic cases, audit events, and sessions together. The database, `.env`/`.env.*` credential files, and `.references/` directory are ignored by Git; blank `.env.example` templates may be tracked. New databases use private file permissions. Any future browser persistence needs the specified opt-in/erase controls.
+For local reset, stop the server and remove `var/cases.sqlite3` and any matching `-wal`/`-shm` files. This erases synthetic cases, audit events, and sessions together. The database, `.env`/`.env.*` credential files, and `.references/` directory are ignored by Git; blank `.env.example` templates may be tracked. The project Codex permission profile denies `.env` and `.env.local` reads when active; managed/current-session policy can override selection. `AGENTS.md` also instructs secret avoidance. See the [secret controls](docs/agent-integration.md#secret-file-controls). New databases use private file permissions. Any future browser persistence needs the specified opt-in/erase controls.
+
+
+## C04 final-slice checks
+
+Run the full suite above, then the disposable offline workflow:
+
+```sh
+.venv/bin/python -m backend.stillhere.knowledge.smoke
+```
+
+The user runs the new credential-dependent proof with the working Sonnet 4.5
+configuration:
+
+```sh
+.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --knowledge
+```
+
+It verifies pending submissions, unchanged published policy/household domains,
+durable reply and replay. Its safe log records `mode: knowledge` and
+`retrieval_state`; an unavailable-source pass leaves successful extraction
+unverified. Enable the corresponding service tools with
+`STILLHERE_AGENT_ENABLE_OFFICIAL_SOURCES=true` and/or
+`STILLHERE_AGENT_ENABLE_RULE_REVIEW=true` (review includes fetch). Publication is
+an explicit local administrator operation outside the household tool registry.
+
+User verification: the offline knowledge workflow passed. The safe live log
+confirms `mode: knowledge`, `smoke_passed` at 13.569 seconds and
+`retrieval_state: unavailable`, verifying the real-model fallback/discrepancy,
+durable reply and replay path. The log does not record why fetching failed;
+the later national `--fetch` proof passes; Colorado live candidate extraction remains pending.
+
+To diagnose an unavailable official source without credentials or a model call:
+
+```sh
+.venv/bin/python -m backend.stillhere.knowledge.check_source
+```
+
+It prints a safe failure category or HTTP status using the same public-page
+transport. See the [diagnostic guide](docs/knowledge-review-integration.md#diagnose-an-unavailable-public-source).
+
+
+The required **successful C04 fetch example before C05 now passes**. Use the
+approved national USAGov source, which has no seeded fallback:
+
+```sh
+.venv/bin/python -m backend.stillhere.knowledge.fetch_smoke
+.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --fetch
+```
+
+The first command requires fresh useful public text and displays an actual
+excerpt/source/time/hash without credentials or a model call. The second is
+user-run and additionally requires Sonnet's source-backed saved reply, unchanged
+domains/policy and replay. An unavailable source fails this strict mode.
+The original DMV `--knowledge` fallback proof remains separate. National guidance
+cannot be submitted as Colorado rule evidence. [Example and verification gate](docs/knowledge-review-integration.md#working-live-fetch-example--verified).
+
+Confirmed October 11: the credential-free fetch returned 1,524 live characters
+and actual public guidance; the strict Bedrock proof passed at 13.265 seconds
+with one completed tool call and `mode: fetch` / available retrieval in the safe
+log. Saved sourced reply, unchanged domains/policy and replay passed. This clears
+the live-fetch prerequisite for C05; national guidance remains unreviewed, and
+Colorado policy extraction/HTTP/shared-review checks remain separate.
+
+## C05 read-only recovery evaluation
+
+`STILLHERE_AGENT_ENABLE_PLANNER=true` independently enables
+`evaluate_recovery_options` (default false). It evaluates the authorized case's
+explicit Boolean availability/completion facts against published AND/OR rules,
+returning provisional/blocked options, necessary blockers/questions, sourced
+alternatives and unknown costs. No car alone asks about other transport;
+reported unavailable office transport blocks the office path while preserving
+the sourced online alternative. Partial coverage and agency gates remain
+unresolved. This tool does not save a plan or update tasks/finance/policy.
+[Full contract, evidence and remaining C05 gates](docs/planner-integration.md).
+
+The user can run the new disposable Sonnet 4.5 proof:
+
+```sh
+.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --planner
+```
+
+It enables its own tool, requires a sourced saved reply and unchanged domains,
+and verifies replay without another evaluation. Live C05 proof remains pending;
+Codex uses synthetic configuration for all tests.
+
+Two further C05 slices now save plan revisions and task reports through
+CaseService. Independently enable `STILLHERE_AGENT_ENABLE_PLAN_REVISION=true`
+and `STILLHERE_AGENT_ENABLE_TASKS=true` for `revise_recovery_plan` and `update_task`.
+The existing public `task.update` command supports explicit completion/skipping,
+allowlisted inability and explicit resolution. Completed work, source attribution
+and history survive revision; no facts, eligibility, money or consent are inferred.
+Compact model summaries retain unknowns and stale-input markers; full records
+remain in the case snapshot. Full C05 and live verification remain pending.
+
+Current validation passes 108 focused and all 325 non-HTTP checks among 330
+discovered; five HTTP checks require local verification. The user runs:
+
+```sh
+.venv/bin/python -W error::ResourceWarning -m unittest discover -s tests -q
+.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --plan
+```

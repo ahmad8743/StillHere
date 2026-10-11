@@ -1,0 +1,3 @@
+# Optional; the deterministic case service and its core tests use only stdlib.
+strands-agents==1.59.0
+python-dotenv==1.2.2

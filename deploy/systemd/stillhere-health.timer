@@ -1,0 +1,10 @@
+[Unit]
+Description=StillHere minute health schedule
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+Unit=stillhere-health.service
+
+[Install]
+WantedBy=timers.target

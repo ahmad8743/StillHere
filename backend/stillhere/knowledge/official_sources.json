@@ -1,0 +1,67 @@
+{
+  "source_usagov_lost_documents": {
+    "source_id": "source_usagov_lost_documents",
+    "url": "https://www.usa.gov/replace-vital-documents",
+    "issuer": "USAGov, U.S. General Services Administration",
+    "jurisdiction": {
+      "country": "US",
+      "state": null
+    }
+  },
+  "source_rule_co_replacement": {
+    "source_id": "source_rule_co_replacement",
+    "url": "https://dmv.colorado.gov/replace-your-lost-stolen-or-destroyed-driver-license/permit/cdl/id",
+    "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+    "jurisdiction": {
+      "country": "US",
+      "state": "CO"
+    },
+    "fallback": {
+      "retrieved_at": "2026-10-11T02:24:54Z",
+      "expires_at": "2026-11-10T02:24:54Z",
+      "content": "A missing or severely damaged Colorado state ID is handled through renewal. An online renewal route may be available; otherwise the DMV directs the applicant to an office appointment. Driver-license duplicate and mail instructions have separate scope."
+    }
+  },
+  "source_rule_co_renewal": {
+    "source_id": "source_rule_co_renewal",
+    "url": "https://dmv.colorado.gov/renew-your-colorado-driver-license-permit-or-id-card",
+    "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+    "jurisdiction": {
+      "country": "US",
+      "state": "CO"
+    },
+    "fallback": {
+      "retrieved_at": "2026-10-11T02:24:54Z",
+      "expires_at": "2026-11-10T02:24:54Z",
+      "content": "Online renewal requires prior credential information, access to email and an accepted payment method. Eligibility must be confirmed through DMV. In-person renewal needs an appointment and the applicable renewal documents. The complete proof checklist and current fee are unresolved in this reference."
+    }
+  },
+  "source_rule_co_documents": {
+    "source_id": "source_rule_co_documents",
+    "url": "https://dmv.colorado.gov/documents",
+    "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+    "jurisdiction": {
+      "country": "US",
+      "state": "CO"
+    },
+    "fallback": {
+      "retrieved_at": "2026-10-11T03:53:07Z",
+      "expires_at": "2026-11-10T03:53:07Z",
+      "content": "The listed identification checklist is scoped to the stated applicant groups and first applications. Selected alternatives include an unexpired U.S. passport or a qualifying U.S. birth certificate plus an additional List B identity document. SSN may be provided verbally at the office or supported by an accepted document. Two qualifying current Colorado address proofs are required in this checklist; electronic versions are allowed. DMV must confirm whether this checklist applies to a replacement or renewal."
+    }
+  },
+  "source_rule_co_exceptions": {
+    "source_id": "source_rule_co_exceptions",
+    "url": "https://dmv.colorado.gov/applicants-who-are-us-citizens-and-permanent-residents",
+    "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+    "jurisdiction": {
+      "country": "US",
+      "state": "CO"
+    },
+    "fallback": {
+      "retrieved_at": "2026-10-11T03:53:07Z",
+      "expires_at": "2026-11-10T03:53:07Z",
+      "content": "An incomplete initial application identifies missing proofs. Applicants unable to obtain standard documents for reasons outside their control can request exceptions processing with applicable DR 2469 evidence. Originals or certified copies, name-change evidence and translation requirements apply. DMV can request further evidence or deny the application. Permanent residents cannot substitute other documents for lawful presence under this page. Applicability and outcomes require official confirmation."
+    }
+  }
+}

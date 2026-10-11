@@ -1,0 +1,12 @@
+[Unit]
+Description=StillHere hourly short-lived certificate renewal check
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+RandomizedDelaySec=5min
+Persistent=true
+Unit=stillhere-tls-renew.service
+
+[Install]
+WantedBy=timers.target

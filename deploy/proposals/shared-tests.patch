@@ -1,0 +1,60 @@
+--- a/tests/test_agent.py
++++ b/tests/test_agent.py
+@@ -437,3 +437,57 @@
+                 self.assertEqual(config.region, "fixture-region")
+                 self.assertEqual(config.model_id, "fixture-model")
+                 self.assertEqual(config.missing_provider_settings, ())
++
++
++class DeploymentProviderConcurrencyProposalTests(unittest.TestCase):
++    def test_calls_that_outlive_timeout_still_bound_new_provider_work(self):
++        release = threading.Event()
++        guard = threading.Condition()
++        calls = [0]
++        active = [0]
++        class BlockedProvider:
++            def reply(self, snapshot, history, text, context, registry):
++                with guard:
++                    calls[0] += 1
++                    active[0] += 1
++                    guard.notify_all()
++                try:
++                    if not release.wait(10):
++                        raise RuntimeError("Synthetic test deadline")
++                    return "Synthetic bounded provider reply."
++                finally:
++                    with guard:
++                        active[0] -= 1
++                        guard.notify_all()
++        with tempfile.TemporaryDirectory() as directory:
++            service = CaseService(Path(directory)/"cases.sqlite3", clock=lambda: NOW)
++            runtime = AgentRuntime(service, config=AgentConfig(timeout_seconds=1), provider=BlockedProvider())
++            inputs = []
++            for index in range(5):
++                token = service.create_session()["session_token"]
++                case = service.create_case(token, {"contract_version": "0.1", "event_id": "create", "time_zone": "America/Chicago"})["case_snapshot"]
++                command = {"contract_version": "0.1", "case_id": case["case_id"], "event_id": "concurrency_chat",
++                           "expected_case_version": 1, "occurred_at": NOW, "channel": "chat", "type": "conversation.message",
++                           "payload": {"message_id": "synthetic_message", "text": "Synthetic concurrency probe."}}
++                inputs.append((token, command))
++            try:
++                with ThreadPoolExecutor(max_workers=5) as executor:
++                    results = list(executor.map(lambda entry: runtime.handle(*entry), inputs))
++                self.assertEqual(4, calls[0])
++                queued = [entry for entry in inputs if service.read_case(entry[0], entry[1]["case_id"])["conversation"]["turns"][-1]["state"] == "queued"]
++                self.assertEqual(1, len(queued))
++                # All four HTTP waits have ended, but the underlying calls still
++                # occupy capacity. Replaying accepted work cannot create a fifth.
++                runtime.handle(*queued[0])
++                self.assertEqual(4, calls[0])
++                release.set()
++                with guard:
++                    self.assertTrue(guard.wait_for(lambda: active[0] == 0, timeout=5))
++                replay = runtime.handle(*queued[0])
++                self.assertEqual("already_applied", replay["status"])
++                self.assertEqual("complete", replay["case_snapshot"]["conversation"]["turns"][-1]["state"])
++                self.assertEqual(5, calls[0])
++            finally:
++                release.set()
++                with guard:
++                    guard.wait_for(lambda: active[0] == 0, timeout=5)

@@ -1,0 +1,32 @@
+--- a/tests/test_case_service.py
++++ b/tests/test_case_service.py
+@@ -146,7 +146,12 @@
+     def test_correction_retains_completed_work_and_marks_old_results_pending(self):
+         snapshot = copy.deepcopy(self.snapshot)
+         snapshot["plan"].update(state="ready", version=1, actions=[{"id": "done", "status": "completed"}])
+-        snapshot["finance"].update(state="calculated", baseline={"input_case_version": 1}, computed_at=NOW)
++        from backend.stillhere.finance import compare_financial_scenarios, prepare_forecast_publication
++        forecasts = compare_financial_scenarios(snapshot["finance"]["ledger"], start_date="2026-10-10",
++            time_zone=snapshot["time_zone"], input_case_version=1)
++        publication = prepare_forecast_publication(forecasts, current_case_version=1,
++            computed_at=NOW, publication_event_id="synthetic_fixture_forecast")
++        snapshot["finance"] = {**publication["proposed_finance"], "ledger": snapshot["finance"]["ledger"]}
+         with closing(sqlite3.connect(self.path)) as connection, connection:
+             connection.execute("UPDATE cases SET snapshot_json=? WHERE case_id=?", (json.dumps(snapshot), self.case_id))
+         updated = self.service.execute(self.token, self.command())["case_snapshot"]
+--- a/tests/test_intake.py
++++ b/tests/test_intake.py
+@@ -95,7 +95,12 @@
+         shelter_id = first["needs"][0]["id"]
+         first["needs"][0]["state"] = "covered"
+         first["plan"].update(state="ready", version=1, actions=[{"id": "done", "status": "completed"}])
+-        first["finance"].update(state="calculated", input_case_version=2, baseline={"input_case_version": 2}, computed_at=NOW)
++        from backend.stillhere.finance import compare_financial_scenarios, prepare_forecast_publication
++        forecasts = compare_financial_scenarios(first["finance"]["ledger"], start_date="2026-10-10",
++            time_zone=first["time_zone"], input_case_version=2)
++        publication = prepare_forecast_publication(forecasts, current_case_version=2,
++            computed_at=NOW, publication_event_id="synthetic_fixture_forecast")
++        first["finance"] = {**publication["proposed_finance"], "ledger": first["finance"]["ledger"]}
+         with closing(sqlite3.connect(self.path)) as connection, connection:
+             connection.execute("UPDATE cases SET snapshot_json=? WHERE case_id=?", (json.dumps(first), self.snapshot["case_id"]))
+         updated = self.service.execute(self.token, self.command({"needs": ["food_water"]}, "more", 2))["case_snapshot"]

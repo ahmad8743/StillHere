@@ -1,0 +1,10 @@
+[Unit]
+Description=StillHere frequent IP TLS expiry check
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=15min
+Unit=stillhere-tls-health.service
+
+[Install]
+WantedBy=timers.target
