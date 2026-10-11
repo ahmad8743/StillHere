@@ -47,6 +47,7 @@
   let selectedFinanceScenario = 'baseline';
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+  const financeControls = window.StillHereFinanceControls.mount({ service: window.StillHereMockService, onChange: () => renderFinance() });
 
   function save() {
     try {
@@ -221,8 +222,24 @@
   function renderFinance() {
     const snapshot = window.StillHereMockService.readCase();
     const ledger = snapshot.finance.ledger;
-    const results = window.StillHereFinance.compare(ledger, '2026-10-10');
+    let results;
+    try {
+      const computed = window.StillHereFinance.forecast_finances({ ledger, start_date: '2026-10-10', case_time_zone: snapshot.time_zone, input_case_version: snapshot.case_version, scenarios: window.StillHereFinance.scenarios.slice(1) });
+      results = [computed.baseline, ...computed.scenarios];
+    } catch (problem) {
+      $('#finance-gap-title').textContent = 'This saved budget needs review.';
+      $('#finance-gap-detail').textContent = problem.message;
+      $('#finance-first-gap').textContent = 'Not yet known';
+      $('#finance-opening').textContent = 'Not yet known';
+      $('#finance-scenarios').replaceChildren();
+      $('#finance-forecast-rows').replaceChildren();
+      $('#finance-save-status').textContent = 'Your saved entries were kept. Resolve the invalid records before adding more.';
+      return;
+    }
     const selected = results.find((scenario) => scenario.scenario_id === selectedFinanceScenario) || results[0];
+    $('#finance-opening').textContent = money(results[0].opening_cents);
+    $('#finance-start').textContent = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${selected.start_date}T12:00:00Z`));
+    financeControls.render();
     const options = $('#finance-scenarios');
     options.replaceChildren();
     results.forEach((scenario) => {
@@ -396,7 +413,7 @@
     budget.type = 'button';
     budget.className = 'finance-inline-link';
     budget.dataset.pageLink = 'finance';
-    budget.textContent = 'View the example budget →';
+    budget.textContent = 'View or update the demo budget →';
     actions.append(budget);
     if (state.active) {
       const back = document.createElement('button');
@@ -600,7 +617,7 @@
   function financeFollowup(urgent) {
     if (urgent) return 'If you’re in immediate danger, call 911 now. I can help organize finances here, but this chat does not contact emergency services.';
     state.financeTurns = (state.financeTurns || 0) + 1;
-    if (state.financeTurns > 1) return 'I’ve kept that with your finance notes. We can take it one piece at a time; the example budget on the Finances page is only a demonstration.';
+    if (state.financeTurns > 1) return 'I’ve kept that with your finance notes. To change the demo numbers, open the budget and review an entry before saving it. Messages here do not change balances automatically.';
     const replies = {
       available: 'Thanks. We’ll separate money you can use now from anything still expected. What essential cost comes due first?',
       costs: 'Got it. Which of those costs is due soonest, and is the amount exact or an estimate?',
@@ -898,6 +915,7 @@
   updateHome();
   if (hash === 'chat') setScreen('chat');
   else if (hash === 'location') setScreen('location');
+  else if (hash === 'finance') setScreen('finance');
   else setScreen('home');
   if (!state.locationPromptSeen && !state.locationShared) showLocationPrompt();
 })();

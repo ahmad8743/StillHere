@@ -1,6 +1,6 @@
 # P2 finance handoff
 
-Status: draft integration contract. C08 remains in progress; these operations have module-level evidence, not backend integration evidence.
+Status: C08 manual module is ready for P1 integration. Schemas remain a proposed `0.1-draft` until both owners freeze them. Evidence covers the independent module and browser-local command adapter, not P1 backend integration.
 
 ## Entry points
 
@@ -12,7 +12,13 @@ const { apply_financial_update, forecast_finances } = require('./frontend/financ
 
 The browser receives the same functions through `window.StillHereFinance`. Inputs are not mutated. Persist only the proposed `result.ledger` of an `applied` result. Other statuses are `already_applied`, `needs_clarification`, and `rejected`. Financial record edits preserve their prior record in `ledger.record_updates`; transactions and reversals remain in `ledger.actual_events`.
 
-The proposed update input schema is `contracts/finance-update.schema.json` (JSON Schema 2020-12). AJV 8.20.0 compiles it into the checked-in `frontend/finance-validation.js`, which the engine uses in both Node and the browser before domain checks. Required fields, unknown fields, types, safe integer cents, calendar dates, unique lists, and exactly one complete commitment/support schedule are enforced. No third-party runtime package or network request is needed. Load the local validator before the engine in a browser; missing validation prevents updates. Its structural rules complement the module's reference, balance, date-ordering and reconciliation rules. This is an update-input schema, not a complete persisted-ledger or forecast schema, and it has not been merged into P1's case command schema. P1's current validator is deliberately limited and must not silently accept unsupported schema keywords.
+JSON Schema 2020-12 contracts:
+
+- `contracts/finance-update.schema.json`: the 11 proposed update operations.
+- `contracts/finance-ledger.schema.json`: balances, actual events, commitments, aid, support, prior/next record audits, and `$defs/UpdateResult`.
+- `contracts/finance-forecast.schema.json`: `$defs/Input`, `$defs/Output`, individual projections, scenarios, and action costs.
+
+AJV 8.20.0 compiles these into the checked-in `frontend/finance-validation.js`. The module validates ledger/update/forecast inputs and calculated outputs in both Node and the browser. Required/unknown fields, safe integer cents, real calendar dates, unique lists, and exactly one complete schedule are enforced. Domain checks add ID uniqueness, references, date ordering, receipt reconciliation and bounded arithmetic. Invalid ledgers cannot be updated or forecast; unknown valid amounts remain `null` and yield incomplete projections. Rejected invalid inputs are never safe to persist, even when returned unchanged for diagnosis. Load the local validator before the engine; missing validation prevents updates. No third-party runtime package or network request is needed. The contracts have not been merged into P1's case command schema; P1's limited validator must not silently accept unsupported keywords. Future input fields require explicit schema and normalization changes.
 
 ## Command mapping
 
@@ -64,8 +70,27 @@ Commitments accept explicit calendar dates/ranges or demo day offsets. Calendar 
 
 ## Evidence and remaining work
 
-From the repository root, run `npm ci` once and then `npm test` (Node.js 18+). Thirty-five tests cover the four required example outputs, replay, expense reconciliation, support limits/overlap, restricted allocation, unknowns, record edits, balance refreshes, transfers, reversals, receipt-link preservation and clarification paths. The contract tests compare the generated Node/browser validators with AJV for all 11 operations and malformed inputs; they also check calendar dates, schedule structure, unchanged inputs, runtime agreement, missing-validator rejection, and script order. `npm test` rejects a stale generated validator. After schema/generator edits, run `npm run build:finance-contract`, then commit both the source and generated file.
+From the repository root, run `npm ci` once and then `npm test` (Node.js 18+). Fifty tests cover the four required example outputs, update and data contracts, replay, expense reconciliation, support limits/overlap, restricted allocation, unknowns, record edits, balance refreshes, transfers, reversals, receipt links and clarification paths. Contract tests check Node/browser validator agreement, actual calendar dates, complete schedules, untouched inputs, missing-validator rejection and script order. Data tests check malformed/orphaned/duplicate records, typed audits, dated scenarios, unknown action costs and aggregate overflow. Manual-control/adapter tests check exact dollar parsing, version conflicts, receipts/aid separation, undo, reload, failed storage and retry identity. `npm test` rejects a stale generated validator. Regenerate with `npm run build:finance-contract` after schema/generator edits and commit both sources and output.
 
-Source access edits, conditional record undo, calendar dates, availability/expiry, stale opening balances, and before/after-expense receipt timing now have regression evidence. Remaining P2 C08 work includes persisted-ledger and forecast/scenario input/output schemas and a final requirement audit. Update-input validation is enforced; the entire stored ledger and forecast input are not yet schema validated. P1 still owns authenticated transport, durable commits, concurrency, and integration with recovery replanning. Optional bank-import transitions are deferred with Plaid; they are not represented as working behavior.
+### Manual module requirement review
+
+| Requirement | Evidence / boundary |
+| --- | --- |
+| Four exact 14-day examples; preserve an early gap despite later aid | Forecast acceptance tests retain Day 5/$55, Day 11/$25, and the specified final positions |
+| Actual spending, receipt, transfer, balance refresh and correction | Typed updates, replay protection, explicit balance effects, two-sided transfer reconciliation, auditable undo |
+| Unknown amounts, inaccessible/restricted funds, stale balances | Null/incomplete projections, restrictions/access tests, dates/expiry tests and rejected invalid data |
+| Confirmed noncash support; overlapping coverage; hypothetical scenarios | Coverage before restricted funds/cash, capped support, immutable baseline, dated scenario tests |
+| Feasible recovery-path costs | Dated cost inputs and unknown-cost warnings; P1 must supply already-feasible paths |
+| Fixed interface and reproducible outputs | Ledger/update/forecast/result schemas, input-version propagation and output validation |
+| Chat/dashboard shared state | Manual controls submit `finance.update` to the local mock; finance changes do not append to recovery/general transcripts |
+| Durable case update and finance-triggered replanning | Pending P1 wrapper, authenticated command handling, concurrency, atomic durable commits and planner integration |
+
+Support is normalized monetary/full-category coverage for the whole case; quantity or household-subset coverage must be converted to explicit eligible commitments/value before calling this module. No automatic quantity conversion, provider matching, or unsupported bank-import transition is claimed. Calendar schedules are required for real persisted use; relative day schedules remain demo inputs tied to the forecast start.
+
+## Manual finance controls (C10 slice)
+
+`frontend/finance-controls.js` supplies Update money, Add spending, Money received, editable planned costs, aid progress, source accessibility and audited undo. Entries have a preview and a separate Confirm & save action. The current balance can be left unchanged when a transaction is already reflected. Refresh confirmation explicitly describes the included transaction IDs. Blank planned/aid amounts remain unknown. A failed device save retains the original snapshot; retry uses the original event ID. Conflicts require a fresh review. Three conversation histories remain separate.
+
+The mock calculates and saves the new ledger/forecast/version together; the planning date is explicitly fixed at October 10, 2026, matching the synthetic fixture. The real P1 service still rejects `finance.update`. Controls use an ordinary command envelope and a single case ledger so the adapter can be replaced later. C10 remains in progress for the rest of the descriptor-driven dashboard and browser interaction/accessibility verification. The automated browser blocked the local `file://` preview; no visual verification is claimed.
 
 Timing detail: scenario receipts accept `date` or demo `day`, and optional `timing` (`before_expenses` default or `after_expenses`). A late receipt cannot erase that day’s earlier gap. Sources become usable on `available_on` and unused funds expire after `expires_on`. A balance snapshot dated before or after the forecast start makes the result incomplete until reconciled.

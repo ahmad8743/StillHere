@@ -8,9 +8,10 @@
     <title>StillHere — Help, one step at a time</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="./fixtures.js" defer></script>
-    <script src="./mock-service.js" defer></script>
     <script src="./finance-validation.js" defer></script>
     <script src="./finance-engine.js" defer></script>
+    <script src="./mock-service.js" defer></script>
+    <script src="./finance-controls.js" defer></script>
     <script src="./app.js" defer></script>
   </head>
   <body>
@@ -111,10 +112,12 @@
           <div class="finance-demo-note"><span aria-hidden="true">i</span><p><strong>Example only</strong> — these are synthetic planning numbers, not your account or a promise of assistance.</p></div>
 
           <section class="finance-summary" aria-label="Example financial summary">
-            <article class="finance-stat"><span>AVAILABLE AT START</span><strong>$300</strong><small>Example cash on hand</small></article>
-            <article class="finance-stat"><span>DAILY ESSENTIALS</span><strong>$65 <small>/ day</small></strong><small>Food, temporary stay, transport</small></article>
+            <article class="finance-stat"><span>AVAILABLE AT START</span><strong id="finance-opening">$300</strong><small>Accessible unrestricted money</small></article>
+            <article class="finance-stat"><span>PLANNING FROM</span><strong id="finance-start">Oct 10</strong><small>Demo date · 14-day estimate</small></article>
             <article class="finance-stat finance-stat-alert"><span>FIRST PROJECTED GAP</span><strong id="finance-first-gap">Day 5 · $55</strong><small id="finance-gap-caption">Example costs exceed available cash</small></article>
           </section>
+
+          <div id="finance-controls"></div>
 
           <section class="finance-panel scenario-panel" aria-labelledby="scenario-title">
             <div class="finance-panel-heading"><div><p class="eyebrow">COMPARE EXAMPLES</p><h2 id="scenario-title">What if circumstances change?</h2></div><span class="finance-period">14 DAYS</span></div>
@@ -124,17 +127,14 @@
 
           <section class="finance-panel" aria-labelledby="daily-cost-title">
             <div class="finance-panel-heading"><div><p class="eyebrow">THE EXAMPLE BUDGET</p><h2 id="daily-cost-title">Daily basics</h2></div><span class="finance-period">14 DAYS</span></div>
-            <div class="cost-row"><span><i class="cost-dot food"></i>Food and water</span><strong>$20 / day</strong></div>
-            <div class="cost-row"><span><i class="cost-dot stay"></i>Temporary lodging</span><strong>$40 / day</strong></div>
-            <div class="cost-row"><span><i class="cost-dot travel"></i>Transportation</span><strong>$5 / day</strong></div>
-            <div class="cost-row cost-row-total"><span>One-time recovery cost · Day 1</span><strong>$30</strong></div>
+            <div id="finance-costs"></div>
             <div class="finance-gap"><span class="gap-mark" aria-hidden="true">!</span><p><strong id="finance-gap-title">In this example, there’s a $55 shortfall on day 5.</strong><br /><span id="finance-gap-detail">That’s when the listed expenses would be more than the $300 starting amount.</span></p></div>
             <details class="forecast-details"><summary>View the 14-day estimate</summary><div class="forecast-table-wrap"><table class="forecast-table"><thead><tr><th>Day</th><th>Money in</th><th>Listed costs</th><th>After costs</th><th>Uncovered</th></tr></thead><tbody id="finance-forecast-rows"></tbody></table></div><p class="forecast-caption">Negative projected amounts show cumulative uncovered listed costs, not debt or an actual account balance.</p></details>
           </section>
 
           <section class="finance-panel support-panel" aria-labelledby="support-title">
             <div><p class="eyebrow">MONEY COMING IN</p><h2 id="support-title">Only count support once it arrives.</h2></div>
-            <p>Expected or unreceived aid is not included in the $300 example. Real program rules vary; check official instructions before making decisions.</p>
+            <p>Expected or unreceived aid stays separate from available money. Record a receipt only after it arrives. Real program rules vary; check official instructions.</p>
           </section>
 
           <a class="finance-chat-link" href="#chat" data-page-link="chat" data-chat-mode="finance">Talk through what might help <span aria-hidden="true">→</span></a>
