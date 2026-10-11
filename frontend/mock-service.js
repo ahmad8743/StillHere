@@ -1,4 +1,4 @@
-/* Browser-only adapter. It mirrors the implemented P1 0.1 intake/correction boundary. */
+/* Browser-only adapter. Finance and check-ins are P2 simulations pending P1 handlers. */
 (() => {
   const STORE = 'stillhere.p2.mock-case.v1';
   const clone = (value) => structuredClone(value);
@@ -13,10 +13,12 @@
   }
 
   let data = load();
-  function persist() {
-    try { localStorage.setItem(STORE, JSON.stringify(data)); } catch { /* The adapter still works in memory for this tab. */ }
+  function persist(candidate = data) {
+    try { localStorage.setItem(STORE, JSON.stringify(candidate)); return true; }
+    catch { return false; }
   }
   function readCase() { return clone(data.case_snapshot); }
+  function readCheckInTime() { return data.check_in_clock || window.StillHereFixtures.emptySnapshot.updated_at; }
   function result(eventId, status, issues = []) {
     return {
       contract_version: '0.1', event_id: eventId, status,
@@ -95,8 +97,8 @@
     if (!['chat', 'dashboard', 'text_simulator'].includes(command.channel)) {
       return result(command.event_id, 'rejected', [issue('forbidden_channel', 'This browser demo cannot submit operator or system commands.')]);
     }
-    if (!['intake.submit', 'fact.correct'].includes(command.type)) {
-      return result(command.event_id, 'rejected', [issue('unsupported_command', 'The P1 service currently supports intake.submit and fact.correct only.')]);
+    if (!['intake.submit', 'fact.correct', 'finance.update', ...(window.StillHereCheckInDemo?.types || [])].includes(command.type)) {
+      return result(command.event_id, 'rejected', [issue('unsupported_command', 'This command is not supported by the browser mock.')]);
     }
     if (data.events[command.event_id]) {
       return data.events[command.event_id].fingerprint === fingerprint(command)
@@ -105,6 +107,43 @@
     }
     if (command.expected_case_version !== data.case_snapshot.case_version) {
       return result(command.event_id, 'conflict', [issue('version_conflict', 'The demo case changed. Reload it before trying again.', true)]);
+    }
+    if (window.StillHereCheckInDemo?.types.includes(command.type)) {
+      const next = clone(data);
+      const receivedAt = readCheckInTime();
+      try { next.case_snapshot = window.StillHereCheckInDemo.apply(next.case_snapshot, command, receivedAt); }
+      catch (error) { return result(command.event_id, 'rejected', [issue('invalid_check_in', error.message)]); }
+      next.case_snapshot.case_version += 1;
+      next.case_snapshot.updated_at = timestamp();
+      next.events[command.event_id] = { type: command.type, case_version: next.case_snapshot.case_version, fingerprint: fingerprint(command) };
+      if (!persist(next)) return result(command.event_id, 'unavailable', [issue('local_save_failed', 'This change was not accepted by the demo. Keep it open and retry when device storage is available.', true)]);
+      data = next;
+      return { ...result(command.event_id, 'applied'), received_at: receivedAt };
+    }
+    if (command.type === 'finance.update') {
+      if (Object.hasOwn(command.payload, 'event_id')) return result(command.event_id, 'rejected', [issue('competing_event_id', 'The command envelope supplies the event ID.')]);
+      const applied = window.StillHereFinance.applyFinancialUpdate(data.case_snapshot.finance.ledger, { ...command.payload, event_id: command.event_id });
+      if (applied.status !== 'applied') return result(command.event_id, applied.status, applied.issues.map((item) => issue(item.code, item.message)));
+      const next = clone(data);
+      const snapshot = next.case_snapshot;
+      snapshot.case_version += 1;
+      snapshot.updated_at = timestamp();
+      let computed;
+      try {
+        computed = window.StillHereFinance.forecast_finances({ ledger: applied.ledger, start_date: '2026-10-10', case_time_zone: snapshot.time_zone, input_case_version: snapshot.case_version, scenarios: window.StillHereFinance.scenarios.slice(1) });
+      } catch {
+        return result(command.event_id, 'rejected', [issue('invalid_forecast', 'These entries cannot produce a supported forecast. Review their dates and amounts.')]);
+      }
+      snapshot.finance = { ...snapshot.finance, ledger: applied.ledger, baseline: computed.baseline, scenarios: computed.scenarios, input_case_version: snapshot.case_version, computed_at: snapshot.updated_at, state: computed.warnings.length ? 'incomplete' : 'calculated' };
+      delete snapshot.finance.pending_input_case_version;
+      if (snapshot.plan.state !== 'not_requested') {
+        snapshot.plan.state = 'pending';
+        snapshot.plan.pending_input_case_version = snapshot.case_version;
+      }
+      next.events[command.event_id] = { type: command.type, case_version: snapshot.case_version, fingerprint: fingerprint(command) };
+      if (!persist(next)) return result(command.event_id, 'unavailable', [issue('local_save_failed', 'This entry was not saved. Keep it open and retry when device storage is available.', true)]);
+      data = next;
+      return result(command.event_id, 'applied');
     }
     if (command.type === 'fact.correct') {
       const payload = command.payload || {};
@@ -146,5 +185,23 @@
     return readCase();
   }
 
-  window.StillHereMockService = Object.freeze({ readCase, submit, reset });
+  function advanceCheckInClock(now) {
+    if (!isInstant(now) || Date.parse(now) <= Date.parse(readCheckInTime())) {
+      return { status: 'rejected', issues: [issue('invalid_demo_time', 'Move the demo clock forward.')] };
+    }
+    const next = clone(data);
+    try { next.case_snapshot = window.StillHereCheckInDemo.advance(next.case_snapshot, now); }
+    catch (error) { return { status: 'rejected', issues: [issue('invalid_demo_time', error.message)] }; }
+    if (stableJson(next.case_snapshot) !== stableJson(data.case_snapshot)) {
+      next.case_snapshot.case_version += 1;
+      next.case_snapshot.updated_at = timestamp();
+    }
+    next.check_in_clock = now;
+    if (!persist(next)) return { status: 'unavailable', issues: [issue('local_save_failed', 'The demo clock was not saved.', true)] };
+    data = next;
+    return { status: 'applied', case_snapshot: readCase(), issues: [] };
+  }
+
+  window.StillHereMockService = Object.freeze({ readCase, submit, reset, readCheckInTime, advanceCheckInClock });
 })();
+// Built by Raneem Mousa

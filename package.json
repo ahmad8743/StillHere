@@ -1,0 +1,14 @@
+{
+  "name": "stillhere-p2",
+  "private": true,
+  "scripts": {
+    "plaid:sandbox": "node scripts/plaid-sandbox-server.cjs",
+    "build:finance-contract": "node scripts/build-finance-validator.cjs",
+    "check:finance-contract": "node scripts/build-finance-validator.cjs --check",
+    "pretest": "npm run check:finance-contract",
+    "test": "node --test tests/frontend/*.test.cjs"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0"
+  }
+}
