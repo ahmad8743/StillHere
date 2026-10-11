@@ -10,7 +10,7 @@ That's why we built **STILL HERE**.
 
 ### Raneem | Recovery Demo
 
-STILL HERE is an AI-powered recovery companion that helps people figure out their next steps after a disaster.
+STILL HERE is an Agentic recovery companion that helps people figure out their next steps after a disaster.
 
 Let's say I'm in Louisiana after a hurricane.
 
