@@ -1,0 +1,12 @@
+{
+  "name": "stillhere-p2",
+  "private": true,
+  "scripts": {
+    "build:finance-contract": "node scripts/build-finance-validator.cjs",
+    "check:finance-contract": "node scripts/build-finance-validator.cjs --check",
+    "test": "node --test tests/frontend/*.test.cjs"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0"
+  }
+}

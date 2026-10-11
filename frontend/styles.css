@@ -156,6 +156,8 @@ h1 em { color: #718779; font-style: italic; }
 .send-button { align-items: center; background: var(--green); border: 0; border-radius: 6px; color: white; cursor: pointer; display: flex; flex: 0 0 30px; font-size: 17px; height: 30px; justify-content: center; }
 .send-button:hover { background: var(--green-dark); }
 .composer-note { color: #929a90; display: flex; font-size: 8px; justify-content: space-between; padding: 7px 3px 0; }
+.save-retry { background: transparent; border: 0; color: #a05f45; cursor: pointer; font-size: 9px; font-weight: 600; margin: 4px 0 0 auto; padding: 4px 3px; }
+.save-retry:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* City preference */
 .location-panel { background: var(--white); border: 1px solid #e7e6de; border-radius: 12px; box-shadow: 0 12px 35px rgba(47,65,56,.04); margin: 22px auto; max-width: 540px; padding: 25px; }
@@ -325,6 +327,7 @@ h1 em { color: #718779; font-style: italic; }
   .chat-footer { bottom: 76px; }
   .composer textarea { font-size: 13px; }
   .composer-note { font-size: 8px; }
+  .save-retry { font-size: 10px; }
   .emergency-bar { gap: 8px; justify-content: flex-start; min-height: 76px; padding: 8px 12px; }
   .emergency-copy { display: block; flex: 1; }
   .emergency-copy strong, .emergency-copy span { display: block; }

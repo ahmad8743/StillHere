@@ -1,5 +1,6 @@
 (() => {
   const STORE = 'stillhere.simple-demo.v1';
+  let storageAvailable = true;
   const defaultState = {
     city: 'New Orleans, Louisiana',
     locationShared: false,
@@ -36,6 +37,7 @@
       if (!Array.isArray(saved.financeMessages)) restored.financeMessages = [];
       return restored;
     } catch {
+      storageAvailable = false;
       return structuredClone(defaultState);
     }
   }
@@ -47,7 +49,22 @@
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
 
   function save() {
-    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* In-memory demo still works if storage is unavailable. */ }
+    try {
+      localStorage.setItem(STORE, JSON.stringify(state));
+      storageAvailable = true;
+    } catch {
+      storageAvailable = false;
+    }
+    updateSaveStatus();
+    return storageAvailable;
+  }
+
+  function updateSaveStatus() {
+    const label = $('#connection-label');
+    const retry = $('#retry-save');
+    if (!label || !retry) return;
+    label.textContent = storageAvailable ? 'Saved on this device' : 'Not saved on this device';
+    retry.classList.toggle('is-hidden', storageAvailable);
   }
 
   function showToast(message) {
@@ -72,6 +89,7 @@
     state.locationShared = true;
     state.locationPromptSeen = true;
     save();
+    submitMockCommand('intake.submit', { current_location: { place: state.city } });
     hideLocationPrompt();
     updateHome();
     showToast('Your city is saved for local demo notices.');
@@ -133,12 +151,71 @@
     return region ? `${name}, ${region === 'Louisiana' ? 'LA' : region}` : name;
   }
 
+  let commandSequence = 0;
+  function eventId() {
+    commandSequence += 1;
+    const randomPart = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}_${commandSequence}`;
+    return `p2_${randomPart}`;
+  }
+
+  function submitMockCommand(type, payload) {
+    const snapshot = window.StillHereMockService.readCase();
+    const result = window.StillHereMockService.submit({
+      contract_version: '0.1',
+      case_id: snapshot.case_id,
+      event_id: eventId(),
+      expected_case_version: snapshot.case_version,
+      occurred_at: new Date().toISOString(),
+      channel: 'chat',
+      type,
+      payload
+    });
+    if (!['applied', 'already_applied'].includes(result.status)) {
+      showToast(result.issues?.[0]?.message || 'That answer could not be saved to the demo case.');
+      return false;
+    }
+    return true;
+  }
+
+  function recoveryIntakeContext() {
+    return {
+      crisis_type: state.incident === 'hurricane' ? 'storm_hurricane' : 'other',
+      ...(state.locationShared && state.city ? { current_location: { place: state.city } } : {})
+    };
+  }
+
+  function syncRecoveryNeeds() {
+    const kinds = new Set();
+    const freeText = [];
+    const mapping = {
+      'Somewhere safe to stay': ['shelter'],
+      'Food and water': ['food_water'],
+      'Medicine or medical care': ['health_support'],
+      Transportation: ['transport'],
+      'Documents or money': ['lost_documents', 'managing_money']
+    };
+    (state.selectedNeeds || []).forEach((item) => {
+      if (mapping[item]) mapping[item].forEach((kind) => kinds.add(kind));
+      else if (item.startsWith('Something else: ')) freeText.push(item.slice('Something else: '.length));
+    });
+    const saved = submitMockCommand('intake.submit', { ...recoveryIntakeContext(), needs: [...kinds] });
+    if (freeText.length) submitMockCommand('fact.correct', { fact_key: 'additional_needs', value: freeText, observed_at: new Date().toISOString() });
+    return saved;
+  }
+
+  function syncRecoveryBarriers() {
+    // Uses P1's flexible fact.correct envelope; it adds no new command type.
+    const barriers = (state.selectedObstacles || []).includes('No obstacles right now') ? [] : (state.selectedObstacles || []);
+    return submitMockCommand('fact.correct', { fact_key: 'access_barriers', value: barriers, observed_at: new Date().toISOString() });
+  }
+
   function currentNeeds() {
     return (state.selectedNeeds || []).join(', ') || state.need || '';
   }
 
   function money(cents) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cents / 100);
+    if (!Number.isSafeInteger(cents)) return 'Unknown';
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(cents / 100);
   }
 
   function renderFinance() {
@@ -157,7 +234,7 @@
       const title = document.createElement('strong');
       title.textContent = scenario.label;
       const result = document.createElement('span');
-      result.textContent = scenario.first_gap ? `First gap: Day ${scenario.first_gap.day} · ${money(scenario.first_gap.amount_cents)}` : `No gap · ${money(scenario.ending_projected_cents)} projected at Day 14`;
+      result.textContent = scenario.warnings.length ? 'More information needed' : scenario.first_gap ? `First gap: Day ${scenario.first_gap.day} · ${money(scenario.first_gap.amount_cents)}` : `No gap · ${money(scenario.ending_projected_cents)} projected at Day 14`;
       button.append(title, result);
       options.append(button);
     });
@@ -168,11 +245,17 @@
     $('#finance-gap-title').textContent = selected.first_gap ? `In this example, there’s a ${money(selected.first_gap.amount_cents)} shortfall on day ${selected.first_gap.day}.` : 'No listed expenses are uncovered in this 14-day example.';
     $('#finance-gap-detail').textContent = selected.first_gap ? 'This is the amount the example costs exceed the projected balance that day.' : `The projected amount after listed costs on day 14 is ${money(selected.ending_projected_cents)}.`;
 
+    if (selected.warnings.length) {
+      $('#finance-first-gap').textContent = 'Not yet known';
+      $('#finance-gap-caption').textContent = 'Some financial details are missing';
+      $('#finance-gap-title').textContent = 'This forecast is incomplete.';
+      $('#finance-gap-detail').textContent = selected.warnings.join(' ');
+    }
     const rows = $('#finance-forecast-rows');
     rows.replaceChildren();
     selected.days.forEach((day) => {
       const row = document.createElement('tr');
-      [ `Day ${day.day} · ${day.date}`, day.receipts_cents ? money(day.receipts_cents) : '—', money(day.expenses_cents), money(day.projected_cents), day.unmet_cents ? money(day.unmet_cents) : '—' ].forEach((value) => {
+      [ `Day ${day.day} · ${day.date}`, day.receipts_cents ? money(day.receipts_cents) : '—', money(day.expenses_cents), money(day.projected_cents), day.unmet_cents === null ? 'Unknown' : day.unmet_cents ? money(day.unmet_cents) : '—' ].forEach((value) => {
         const cell = document.createElement('td');
         cell.textContent = value;
         row.append(cell);
@@ -275,11 +358,11 @@
     button.id = 'continue-stage';
     button.textContent = label;
     actions.append(button);
-    if (state.stage === 'obstacles') {
+    if (state.stage === 'need' || state.stage === 'obstacles') {
       const skip = document.createElement('button');
       skip.type = 'button';
       skip.className = 'quiet-link';
-      skip.id = 'skip-obstacles';
+      skip.id = state.stage === 'need' ? 'skip-needs' : 'skip-obstacles';
       skip.textContent = 'Skip for now';
       actions.append(skip);
     }
@@ -371,6 +454,17 @@
     source.className = 'demo-source';
     source.textContent = 'Example guidance · no resources have been contacted';
     card.append(source);
+    const corrections = document.createElement('div');
+    corrections.className = 'answer-corrections';
+    [['need', 'Edit needs'], ['obstacles', 'Edit obstacles']].forEach(([stage, label]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'quiet-link';
+      button.dataset.editStage = stage;
+      button.textContent = label;
+      corrections.append(button);
+    });
+    card.append(corrections);
     container.append(card);
   }
 
@@ -442,6 +536,7 @@
       messages: [{ role: 'assistant', text: mode === 'unsure' ? 'That’s okay. Before anything else, are you in immediate danger right now?' : mode === 'affected' ? 'I’m sorry you’re dealing with this. Before anything else, are you in immediate danger right now?' : 'I’m here to help. Before we get started, are you in immediate danger right now?' }]
     };
     save();
+    submitMockCommand('intake.submit', recoveryIntakeContext());
     updateHome();
     setScreen('chat');
   }
@@ -522,6 +617,7 @@
     state.selectedNeeds = [...selected];
     state.need = currentNeeds();
     save();
+    syncRecoveryNeeds();
     renderChat();
   }
 
@@ -536,6 +632,7 @@
       state.selectedObstacles = [...selected];
     }
     save();
+    syncRecoveryBarriers();
     renderChat();
   }
 
@@ -570,6 +667,7 @@
       state.stage = 'need';
       addAssistant('I’m glad you’re safe for now. What kinds of help do you need? Choose all that apply.');
     }
+    submitMockCommand('intake.submit', { ...recoveryIntakeContext(), help_urgency: answer === 'safe_no' ? 'urgent_safety' : answer === 'safe_unsure' ? 'unsure' : 'recovery_steps' });
     save();
     renderChat();
   }
@@ -595,10 +693,12 @@
     } else if (state.stage === 'safety') {
       if (urgent || /\b(no|not safe|unsafe|in danger)\b/i.test(clean)) {
         state.stage = 'urgent';
+        submitMockCommand('intake.submit', { ...recoveryIntakeContext(), help_urgency: 'urgent_safety' });
         addAssistant('If you may be in immediate danger, call 911 now. Move away from immediate hazards if you can. You can continue here when it is safe.');
       } else if (/\b(yes|safe|not sure|unsure|maybe)\b/i.test(clean)) {
         const uncertain = /not sure|unsure|maybe/i.test(clean);
         state.stage = 'need';
+        submitMockCommand('intake.submit', { ...recoveryIntakeContext(), help_urgency: uncertain ? 'unsure' : 'recovery_steps' });
         addAssistant(uncertain ? 'If you may be in immediate danger, call 911. If you’re safe enough to continue, choose all the kinds of help you need.' : 'I’m glad you’re safe for now. What kinds of help do you need? Choose all that apply.');
       } else {
         addAssistant('Please choose one: safe for now, in immediate danger, or not sure.');
@@ -617,9 +717,11 @@
       const typedNeed = `Something else: ${clean}`;
       if (!(state.selectedNeeds || []).includes(typedNeed)) state.selectedNeeds.push(typedNeed);
       state.need = currentNeeds();
+      syncRecoveryNeeds();
       addAssistant('I’ve added that to your needs. Choose anything else that applies, then continue.');
     } else if (state.stage === 'obstacles') {
       if (!(state.selectedObstacles || []).includes(clean)) state.selectedObstacles.push(clean);
+      syncRecoveryBarriers();
       addAssistant('I’ve added that as an obstacle. Choose anything else that applies, then continue.');
     } else {
       addAssistant('I’ve added that to our conversation. We can take it one step at a time. What would you like help with next?');
@@ -678,10 +780,29 @@
     const safety = event.target.closest('[data-answer]');
     if (safety) chooseSafety(safety.dataset.answer);
     if (event.target.closest('#continue-stage')) continueStage();
+    if (event.target.closest('#skip-needs')) {
+      state.selectedNeeds = [];
+      state.need = '';
+      syncRecoveryNeeds();
+      state.stage = 'obstacles';
+      addAssistant('That’s okay. You can skip the needs list. Is anything making it harder to get help?');
+      save();
+      renderChat();
+      return;
+    }
     if (event.target.closest('#skip-obstacles')) {
       state.selectedObstacles = [];
       state.stage = 'steps';
+      syncRecoveryBarriers();
       addAssistant('That’s okay. Here are a couple of next steps based on what you shared.');
+      save();
+      renderChat();
+      return;
+    }
+    const editStage = event.target.closest('[data-edit-stage]');
+    if (editStage) {
+      state.stage = editStage.dataset.editStage;
+      addAssistant(state.stage === 'need' ? 'You can change any of the needs you selected.' : 'You can change any obstacles you selected.');
       save();
       renderChat();
     }
@@ -725,6 +846,7 @@
     state.locationShared = true;
     state.locationPromptSeen = true;
     save();
+    submitMockCommand('intake.submit', { current_location: { place: state.city } });
     updateHome();
     setScreen('home');
     hideLocationPrompt();
@@ -737,6 +859,9 @@
     handleTextMessage(input.value);
     input.value = '';
     input.style.height = 'auto';
+  });
+  $('#retry-save').addEventListener('click', () => {
+    showToast(save() ? 'Your conversation was saved on this device.' : 'Still unable to save. Keep this page open and try again.');
   });
   $('#message-input').addEventListener('input', (event) => {
     const input = event.currentTarget;
@@ -769,9 +894,12 @@
   });
 
   const hash = window.location.hash.slice(1);
+  updateSaveStatus();
   updateHome();
   if (hash === 'chat') setScreen('chat');
   else if (hash === 'location') setScreen('location');
   else setScreen('home');
   if (!state.locationPromptSeen && !state.locationShared) showLocationPrompt();
 })();
+
+// Built by Raneem Mousa
