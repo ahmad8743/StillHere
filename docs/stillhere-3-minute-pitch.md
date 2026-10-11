@@ -52,6 +52,8 @@ The agent is programmed to take in this new data and fix my to-do list according
 
 We use strands and AWS Bedrock to host this agent and its tools.
 
+Akamai is used for application hosting using Linode and database management
+
 ### Raneem | Business Model
 
 STILL HERE will always be free for people seeking help. Our business model is to license the platform to governments and recovery foundations, helping them coordinate assistance and reduce administrative work.
