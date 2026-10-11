@@ -1,5 +1,7 @@
 # Lovable Build Plan — StillHere P2 Experience
 
+Status: frontend design/build handoff. The partial prototype is implemented in `frontend/`; C08 finance and C09 intake/chat are `IN_PROGRESS`. Four canonical finance calculations and the initial fixture/mock contract shapes pass bounded offline checks. Chat remains browser-local and canned, with separate demo state from the mock case. Full finance behavior, required later views, frontend/backend integration and UI acceptance remain pending. This plan describes intended interactions; current project status and verification evidence live in [contracts and progress](docs/contracts-and-progress.md).
+
 ## Purpose
 
 Build a polished, mobile-first frontend prototype for **StillHere**, a disaster recovery companion. It helps a household find next steps, understand near-term finances, and optionally manage check-ins. This is a frontend design/build handoff for Lovable. Use realistic interactions and synthetic data; do not connect real services.

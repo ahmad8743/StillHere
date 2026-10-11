@@ -6,6 +6,8 @@ from http.client import HTTPConnection
 from pathlib import Path
 
 from backend.stillhere.contracts import validate
+from backend.stillhere.agent import AgentRuntime
+from tests.test_agent import ScriptedProvider
 from backend.stillhere.server import CaseHTTPServer
 from backend.stillhere.service import CaseService
 
@@ -73,7 +75,7 @@ class HTTPTests(unittest.TestCase):
         status, rejected, _ = self.request("POST", "/v1/commands", command)
         self.assertEqual(status, 401)
         self.assertIsNone(rejected["case_snapshot"])
-        self.assertEqual(self.request("GET", "/health")[1]["implemented_commands"], ["fact.correct", "intake.submit"])
+        self.assertEqual(self.request("GET", "/health")[1]["implemented_commands"], ["fact.correct", "intake.submit", "conversation.message"])
 
     def test_malformed_json_and_self_assigned_roles_are_rejected(self):
         for raw in ('{"role":"operator"}', '{"role":null,"role":"system"}', '{"amount":NaN}', '[]', '{'):
@@ -81,6 +83,40 @@ class HTTPTests(unittest.TestCase):
                 status, error, _ = self.request("POST", "/v1/sessions", raw=raw)
                 self.assertEqual(status, 400)
                 validate("AccessError", error)
+
+    def test_chat_http_runs_scoped_tools_and_replay_returns_latest_snapshot(self):
+        def action(context, registry):
+            registry.invoke("correct_fact", {"fact_key": "mobility", "value": "no_car", "observed_at": "2026-10-10T15:00:00Z"}, context)
+        provider = ScriptedProvider(action)
+        self.server.agent_runtime = AgentRuntime(self.server.service, provider=provider)
+        token = self.request("POST", "/v1/sessions", {"contract_version": "0.1"})[1]["session_token"]
+        created = self.request("POST", "/v1/cases", {"contract_version": "0.1", "event_id": "create", "time_zone": "America/Chicago"}, token)[1]
+        command = {"contract_version": "0.1", "case_id": created["case_snapshot"]["case_id"],
+                   "event_id": "chat_http", "expected_case_version": 1, "occurred_at": "2026-10-10T15:00:00Z",
+                   "channel": "chat", "type": "conversation.message", "payload": {"message_id": "message_http", "text": "I have no car."}}
+        status, result, headers = self.request("POST", "/v1/commands", command, token)
+        self.assertEqual(status, 200)
+        self.assertEqual(headers["Cache-Control"], "no-store")
+        self.assertEqual(result["case_snapshot"]["facts"]["mobility"]["value"], "no_car")
+        self.assertEqual(result["case_snapshot"]["conversation"]["turns"][-1]["state"], "complete")
+        replay = self.request("POST", "/v1/commands", command, token)[1]
+        self.assertEqual(replay["status"], "already_applied")
+        self.assertEqual(provider.calls, 1)
+        stranger = self.request("POST", "/v1/sessions", {"contract_version": "0.1"})[1]["session_token"]
+        self.assertEqual(self.request("POST", "/v1/commands", command, stranger)[0], 404)
+        self.assertEqual(provider.calls, 1)
+
+    def test_chat_http_provider_configuration_failure_is_a_durable_turn(self):
+        token = self.request("POST", "/v1/sessions", {"contract_version": "0.1"})[1]["session_token"]
+        created = self.request("POST", "/v1/cases", {"contract_version": "0.1", "event_id": "create", "time_zone": "America/Chicago"}, token)[1]
+        command = {"contract_version": "0.1", "case_id": created["case_snapshot"]["case_id"],
+                   "event_id": "chat_unconfigured", "expected_case_version": 1, "occurred_at": "2026-10-10T15:00:00Z",
+                   "channel": "chat", "type": "conversation.message", "payload": {"message_id": "message_http", "text": "Hello."}}
+        status, result, _ = self.request("POST", "/v1/commands", command, token)
+        self.assertEqual(status, 200)
+        turn = result["case_snapshot"]["conversation"]["turns"][-1]
+        self.assertEqual(turn["state"], "failed")
+        self.assertEqual(turn["issue"]["code"], "agent_not_configured")
 
     def test_intake_creation_and_later_submission_share_real_http_case(self):
         token = self.request("POST", "/v1/sessions", {"contract_version": "0.1"})[1]["session_token"]

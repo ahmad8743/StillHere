@@ -1,209 +1,1829 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:stillhere:case-service:0.1",
-  "$comment": "C01 boundary. Other components' populated record schemas are not frozen by this slice.",
+  "$comment": "C01 and bounded C02 boundary. Other components' populated record schemas remain pending review.",
   "$defs": {
-    "Id": {"type": "string", "minLength": 1, "maxLength": 128},
-    "Instant": {"type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$"},
-    "TimeZone": {"type": "string", "minLength": 1, "maxLength": 128, "format": "iana-time-zone"},
+    "Id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "Instant": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|\\+00:00)$"
+    },
+    "TimeZone": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "format": "iana-time-zone"
+    },
     "Issue": {
-      "type": "object", "additionalProperties": false,
-      "required": ["code", "message", "retryable"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
       "properties": {
-        "code": {"type": "string"}, "message": {"type": "string"},
-        "field": {"type": "string"}, "retryable": {"type": "boolean"}
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
       }
     },
     "AccessError": {
-      "type": "object", "additionalProperties": false,
-      "required": ["contract_version", "error"],
-      "properties": {"contract_version": {"enum": ["0.1"]}, "error": {"$ref": "#/$defs/Issue"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "error"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "error": {
+          "$ref": "#/$defs/Issue"
+        }
+      }
     },
     "SessionResult": {
-      "type": "object", "additionalProperties": false,
-      "required": ["contract_version", "session_token", "created_at"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "session_token",
+        "created_at"
+      ],
       "properties": {
-        "contract_version": {"enum": ["0.1"]}, "session_token": {"$ref": "#/$defs/Id"},
-        "created_at": {"$ref": "#/$defs/Instant"}
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "session_token": {
+          "$ref": "#/$defs/Id"
+        },
+        "created_at": {
+          "$ref": "#/$defs/Instant"
+        }
       }
     },
     "SessionRequest": {
-      "type": "object", "additionalProperties": false,
-      "required": ["contract_version"],
-      "properties": {"contract_version": {"enum": ["0.1"]}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        }
+      }
     },
     "CreateCaseRequest": {
-      "type": "object", "additionalProperties": false,
-      "required": ["contract_version", "event_id", "time_zone"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "event_id",
+        "time_zone"
+      ],
       "properties": {
-        "contract_version": {"enum": ["0.1"]}, "event_id": {"$ref": "#/$defs/Id"},
-        "time_zone": {"$ref": "#/$defs/TimeZone"},
-        "intake": {"$ref": "#/$defs/IntakeSelections"},
-        "occurred_at": {"$ref": "#/$defs/Instant"}
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "time_zone": {
+          "$ref": "#/$defs/TimeZone"
+        },
+        "intake": {
+          "$ref": "#/$defs/IntakeSelections"
+        },
+        "occurred_at": {
+          "$ref": "#/$defs/Instant"
+        }
       }
     },
     "IntakeLocation": {
-      "type": "object", "additionalProperties": false,
-      "anyOf": [{"required": ["place"]}, {"required": ["postal_code"]}],
+      "type": "object",
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "place"
+          ]
+        },
+        {
+          "required": [
+            "postal_code"
+          ]
+        }
+      ],
       "properties": {
-        "place": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S"},
-        "postal_code": {"type": "string", "pattern": "^[0-9]{5}(-[0-9]{4})?$"}
+        "place": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "postal_code": {
+          "type": "string",
+          "pattern": "^[0-9]{5}(-[0-9]{4})?$"
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "state": {
+          "enum": [
+            "AK",
+            "AL",
+            "AR",
+            "AS",
+            "AZ",
+            "CA",
+            "CO",
+            "CT",
+            "DC",
+            "DE",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "IA",
+            "ID",
+            "IL",
+            "IN",
+            "KS",
+            "KY",
+            "LA",
+            "MA",
+            "MD",
+            "ME",
+            "MI",
+            "MN",
+            "MO",
+            "MP",
+            "MS",
+            "MT",
+            "NC",
+            "ND",
+            "NE",
+            "NH",
+            "NJ",
+            "NM",
+            "NV",
+            "NY",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VA",
+            "VI",
+            "VT",
+            "WA",
+            "WI",
+            "WV",
+            "WY"
+          ]
+        },
+        "county_fips": {
+          "type": "string",
+          "pattern": "^[0-9]{5}$"
+        }
       }
     },
     "IntakeSelections": {
-      "type": "object", "additionalProperties": false,
+      "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "help_urgency": {"enum": ["urgent_safety", "essentials_today", "recovery_steps", "unsure", null]},
-        "crisis_type": {"enum": ["flood", "storm_hurricane", "wildfire", "earthquake", "other", "unsure", null]},
+        "help_urgency": {
+          "enum": [
+            "urgent_safety",
+            "essentials_today",
+            "recovery_steps",
+            "unsure",
+            null
+          ]
+        },
+        "crisis_type": {
+          "enum": [
+            "flood",
+            "storm_hurricane",
+            "wildfire",
+            "earthquake",
+            "other",
+            "unsure",
+            null
+          ]
+        },
         "needs": {
-          "type": ["array", "null"], "uniqueItems": true, "maxItems": 8,
-          "anyOf": [
-            {"type": "null"}, {"enum": [["unsure"]]},
-            {"type": "array", "items": {"enum": ["shelter", "food_water", "health_support", "transport", "lost_documents", "aid_applications", "managing_money"]}}
+          "type": [
+            "array",
+            "null"
           ],
-          "items": {"enum": ["shelter", "food_water", "health_support", "transport", "lost_documents", "aid_applications", "managing_money", "unsure"]}
+          "uniqueItems": true,
+          "maxItems": 8,
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                [
+                  "unsure"
+                ]
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "shelter",
+                  "food_water",
+                  "health_support",
+                  "transport",
+                  "lost_documents",
+                  "aid_applications",
+                  "managing_money"
+                ]
+              }
+            }
+          ],
+          "items": {
+            "enum": [
+              "shelter",
+              "food_water",
+              "health_support",
+              "transport",
+              "lost_documents",
+              "aid_applications",
+              "managing_money",
+              "unsure"
+            ]
+          }
         },
         "household_group": {
-          "type": ["array", "null"], "uniqueItems": true, "maxItems": 4,
-          "anyOf": [
-            {"type": "null"}, {"enum": [["just_me"]]},
-            {"type": "array", "items": {"enum": ["children_with_me", "other_adults_with_me", "helping_someone_else"]}}
+          "type": [
+            "array",
+            "null"
           ],
-          "items": {"enum": ["just_me", "children_with_me", "other_adults_with_me", "helping_someone_else"]}
+          "uniqueItems": true,
+          "maxItems": 4,
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "enum": [
+                [
+                  "just_me"
+                ]
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "children_with_me",
+                  "other_adults_with_me",
+                  "helping_someone_else"
+                ]
+              }
+            }
+          ],
+          "items": {
+            "enum": [
+              "just_me",
+              "children_with_me",
+              "other_adults_with_me",
+              "helping_someone_else"
+            ]
+          }
         },
-        "current_location": {"anyOf": [{"$ref": "#/$defs/IntakeLocation"}, {"type": "null"}]}
+        "current_location": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntakeLocation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
       }
     },
     "IntakeNeed": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "kind", "reported_urgency", "state", "source_ids", "fact_keys"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "reported_urgency",
+        "state",
+        "source_ids",
+        "fact_keys"
+      ],
       "properties": {
-        "id": {"$ref": "#/$defs/Id"},
-        "kind": {"enum": ["shelter", "food_water", "health_support", "transport", "lost_documents", "aid_applications", "managing_money"]},
-        "reported_urgency": {"enum": ["urgent_safety", "essentials_today", "recovery_steps", "unknown"]},
-        "state": {"enum": ["covered", "uncovered", "unknown"]},
-        "source_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}},
-        "fact_keys": {"type": "array", "items": {"type": "string"}}
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "shelter",
+            "food_water",
+            "health_support",
+            "transport",
+            "lost_documents",
+            "aid_applications",
+            "managing_money"
+          ]
+        },
+        "reported_urgency": {
+          "enum": [
+            "urgent_safety",
+            "essentials_today",
+            "recovery_steps",
+            "unknown"
+          ]
+        },
+        "state": {
+          "enum": [
+            "covered",
+            "uncovered",
+            "unknown"
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "fact_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "CommandEnvelope": {
-      "type": "object", "additionalProperties": false,
-      "required": ["contract_version", "case_id", "event_id", "expected_case_version", "occurred_at", "channel", "type", "payload"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "case_id",
+        "event_id",
+        "expected_case_version",
+        "occurred_at",
+        "channel",
+        "type",
+        "payload"
+      ],
       "properties": {
-        "contract_version": {"enum": ["0.1"]},
-        "case_id": {"$ref": "#/$defs/Id"}, "event_id": {"$ref": "#/$defs/Id"},
-        "expected_case_version": {"type": "integer", "minimum": 1},
-        "occurred_at": {"$ref": "#/$defs/Instant"},
-        "channel": {"enum": ["chat", "dashboard", "text_simulator", "operator", "system"]},
-        "type": {"enum": ["intake.submit", "conversation.message", "fact.correct", "task.update", "finance.update", "scenario.set", "application.update", "help.request", "check_in.enroll", "check_in.reply", "check_in.pause", "location.share", "location.clear", "follow_up.acknowledge", "follow_up.record"]},
-        "payload": {"type": "object"}
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "case_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "expected_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "occurred_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "channel": {
+          "enum": [
+            "chat",
+            "dashboard",
+            "text_simulator",
+            "operator",
+            "system"
+          ]
+        },
+        "type": {
+          "enum": [
+            "intake.submit",
+            "conversation.message",
+            "fact.correct",
+            "task.update",
+            "finance.update",
+            "scenario.set",
+            "application.update",
+            "help.request",
+            "check_in.enroll",
+            "check_in.reply",
+            "check_in.pause",
+            "location.share",
+            "location.clear",
+            "follow_up.acknowledge",
+            "follow_up.record"
+          ]
+        },
+        "payload": {
+          "type": "object"
+        }
       }
     },
     "FactCorrectionPayload": {
-      "type": "object", "additionalProperties": false,
-      "required": ["fact_key", "value", "observed_at"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact_key",
+        "value",
+        "observed_at"
+      ],
       "properties": {
-        "fact_key": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[a-z][a-z0-9_]*$"},
-        "value": {}, "observed_at": {"$ref": "#/$defs/Instant"}
+        "fact_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "value": {},
+        "observed_at": {
+          "$ref": "#/$defs/Instant"
+        }
       }
     },
     "Fact": {
-      "type": "object", "additionalProperties": false,
-      "required": ["value", "state", "observed_at", "source_ids"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "state",
+        "observed_at",
+        "source_ids"
+      ],
       "properties": {
-        "value": {}, "state": {"enum": ["unknown", "user_reported", "source_supported", "conflicting", "stale"]},
-        "observed_at": {"anyOf": [{"$ref": "#/$defs/Instant"}, {"type": "null"}]},
-        "source_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}}
+        "value": {},
+        "state": {
+          "enum": [
+            "unknown",
+            "user_reported",
+            "source_supported",
+            "conflicting",
+            "stale"
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        }
       }
     },
     "DashboardDescriptor": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "kind", "record_ids", "display_order"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "record_ids",
+        "display_order"
+      ],
       "properties": {
-        "id": {"$ref": "#/$defs/Id"},
-        "kind": {"enum": ["urgent_resource", "next_step", "task_list", "blocker_controls", "evidence_checklist", "aid_tracker", "finance_overview", "scenario_comparison", "check_in", "source_details"]},
-        "record_ids": {"type": "array", "items": {"$ref": "#/$defs/Id"}},
-        "display_order": {"type": "integer", "minimum": 0}
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "urgent_resource",
+            "next_step",
+            "task_list",
+            "blocker_controls",
+            "evidence_checklist",
+            "aid_tracker",
+            "finance_overview",
+            "scenario_comparison",
+            "check_in",
+            "source_details"
+          ]
+        },
+        "record_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          }
+        },
+        "display_order": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "CaseSnapshot": {
-      "type": "object", "additionalProperties": false,
-      "required": ["contract_version", "case_id", "case_version", "updated_at", "time_zone", "household_mode", "facts", "needs", "evidence", "resources", "plan", "applications", "finance", "check_in", "shared_location", "follow_ups", "conversation", "components", "sources", "notices"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "case_id",
+        "case_version",
+        "updated_at",
+        "time_zone",
+        "household_mode",
+        "facts",
+        "needs",
+        "evidence",
+        "resources",
+        "plan",
+        "applications",
+        "finance",
+        "check_in",
+        "shared_location",
+        "follow_ups",
+        "conversation",
+        "components",
+        "sources",
+        "notices"
+      ],
       "properties": {
-        "contract_version": {"enum": ["0.1"]}, "case_id": {"$ref": "#/$defs/Id"},
-        "case_version": {"type": "integer", "minimum": 1}, "updated_at": {"$ref": "#/$defs/Instant"},
-        "time_zone": {"$ref": "#/$defs/TimeZone"}, "household_mode": {"enum": ["synthetic"]},
-        "facts": {"type": "object", "additionalProperties": {"$ref": "#/$defs/Fact"}},
-        "needs": {"type": "array", "items": {"type": "object"}},
-        "evidence": {"type": "array", "items": {"type": "object"}},
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "case_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "updated_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "time_zone": {
+          "$ref": "#/$defs/TimeZone"
+        },
+        "household_mode": {
+          "enum": [
+            "synthetic"
+          ]
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Fact"
+          }
+        },
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
         "resources": {
-          "type": "object", "required": ["state", "items", "notices"],
+          "type": "object",
+          "required": [
+            "state",
+            "items",
+            "notices"
+          ],
           "properties": {
-            "state": {"enum": ["available", "no_match", "unavailable", "not_requested"]},
-            "items": {"type": "array", "items": {"type": "object"}},
-            "notices": {"type": "array", "items": {"type": "object"}}
+            "state": {
+              "enum": [
+                "available",
+                "no_match",
+                "unavailable",
+                "not_requested"
+              ]
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "notices": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
           }
         },
         "plan": {
-          "type": "object", "required": ["state", "version", "actions", "blockers", "questions"],
+          "type": "object",
+          "required": [
+            "state",
+            "version",
+            "actions",
+            "blockers",
+            "questions"
+          ],
           "properties": {
-            "state": {"type": "string"}, "version": {"type": "integer", "minimum": 0},
-            "pending_input_case_version": {"type": "integer", "minimum": 1},
-            "actions": {"type": "array", "items": {"type": "object"}},
-            "blockers": {"type": "array", "items": {"type": "object"}},
-            "questions": {"type": "array", "items": {"type": "object"}}
-          }
-        },
-        "applications": {"type": "array", "items": {"type": "object"}},
-        "finance": {
-          "type": "object", "required": ["state", "ledger", "scenarios", "baseline", "input_case_version", "computed_at"],
-          "properties": {
-            "state": {"type": "string"}, "ledger": {
-              "type": "object", "required": ["money_sources", "actual_events", "expense_commitments", "aid", "support"],
-              "properties": {
-                "money_sources": {"type": "array", "items": {"type": "object"}},
-                "actual_events": {"type": "array", "items": {"type": "object"}},
-                "expense_commitments": {"type": "array", "items": {"type": "object"}},
-                "aid": {"type": "array", "items": {"type": "object"}},
-                "support": {"type": "array", "items": {"type": "object"}}
+            "state": {
+              "type": "string"
+            },
+            "version": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "pending_input_case_version": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "actions": {
+              "type": "array",
+              "items": {
+                "type": "object"
               }
             },
-            "scenarios": {"type": "array", "items": {"type": "object"}},
-            "baseline": {"type": ["object", "null"]},
-            "input_case_version": {"type": "integer", "minimum": 1},
-            "pending_input_case_version": {"type": "integer", "minimum": 1},
-            "computed_at": {"anyOf": [{"$ref": "#/$defs/Instant"}, {"type": "null"}]}
+            "blockers": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "questions": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "applications": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "finance": {
+          "type": "object",
+          "required": [
+            "state",
+            "ledger",
+            "scenarios",
+            "baseline",
+            "input_case_version",
+            "computed_at"
+          ],
+          "properties": {
+            "state": {
+              "type": "string"
+            },
+            "ledger": {
+              "type": "object",
+              "required": [
+                "money_sources",
+                "actual_events",
+                "expense_commitments",
+                "aid",
+                "support"
+              ],
+              "properties": {
+                "money_sources": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "actual_events": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "expense_commitments": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "aid": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                },
+                "support": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "scenarios": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "baseline": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "input_case_version": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "pending_input_case_version": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "computed_at": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Instant"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
           }
         },
         "check_in": {
-          "type": "object", "required": ["enrolled", "status", "schedule", "last_report", "attempts"],
+          "type": "object",
+          "required": [
+            "enrolled",
+            "status",
+            "schedule",
+            "last_report",
+            "attempts"
+          ],
           "properties": {
-            "enrolled": {"type": "boolean"}, "status": {"type": "string"},
-            "schedule": {"type": ["object", "null"]}, "last_report": {"type": ["object", "null"]},
-            "attempts": {"type": "array", "items": {"type": "object"}}
+            "enrolled": {
+              "type": "boolean"
+            },
+            "status": {
+              "type": "string"
+            },
+            "schedule": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "last_report": {
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "attempts": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            }
           }
         },
-        "shared_location": {"type": ["object", "null"]},
-        "follow_ups": {"type": "array", "items": {"type": "object"}},
-        "conversation": {
-          "type": "object", "required": ["turns"],
-          "properties": {"turns": {"type": "array", "items": {"type": "object"}}}
+        "shared_location": {
+          "type": [
+            "object",
+            "null"
+          ]
         },
-        "components": {"type": "array", "items": {"$ref": "#/$defs/DashboardDescriptor"}},
-        "sources": {"type": "array", "items": {"type": "object"}},
-        "notices": {"type": "array", "items": {"type": "object"}}
+        "follow_ups": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "conversation": {
+          "type": "object",
+          "required": [
+            "turns"
+          ],
+          "properties": {
+            "turns": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ConversationTurn"
+              }
+            }
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardDescriptor"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "notices": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "incident_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "current": {
+              "$ref": "#/$defs/IncidentContext"
+            },
+            "damaged": {
+              "$ref": "#/$defs/IncidentContext"
+            }
+          }
+        }
       }
     },
     "CommandResult": {
-      "type": "object", "additionalProperties": false,
-      "required": ["contract_version", "event_id", "status", "received_at", "applied_case_version", "case_snapshot", "issues"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "event_id",
+        "status",
+        "received_at",
+        "applied_case_version",
+        "case_snapshot",
+        "issues"
+      ],
       "properties": {
-        "contract_version": {"enum": ["0.1"]}, "event_id": {"$ref": "#/$defs/Id"},
-        "status": {"enum": ["applied", "already_applied", "needs_clarification", "conflict", "rejected", "unavailable"]},
-        "received_at": {"$ref": "#/$defs/Instant"},
-        "applied_case_version": {"type": ["integer", "null"], "minimum": 1},
-        "case_snapshot": {"anyOf": [{"$ref": "#/$defs/CaseSnapshot"}, {"type": "null"}]},
-        "issues": {"type": "array", "items": {"$ref": "#/$defs/Issue"}}
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "status": {
+          "enum": [
+            "applied",
+            "already_applied",
+            "needs_clarification",
+            "conflict",
+            "rejected",
+            "unavailable"
+          ]
+        },
+        "received_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "applied_case_version": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "case_snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CaseSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        }
+      }
+    },
+    "ConversationMessagePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "message_id",
+        "text"
+      ],
+      "properties": {
+        "message_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000,
+          "pattern": "\\S"
+        },
+        "choice_id": {
+          "$ref": "#/$defs/Id"
+        }
+      }
+    },
+    "ConversationTurn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "text",
+        "created_at",
+        "state"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "assistant"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 8000
+        },
+        "created_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "state": {
+          "enum": [
+            "queued",
+            "running",
+            "complete",
+            "failed"
+          ]
+        },
+        "choice_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "issue": {
+          "$ref": "#/$defs/Issue"
+        }
+      }
+    },
+    "ReadCaseToolArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "SubmitIntakeToolArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selections"
+      ],
+      "properties": {
+        "selections": {
+          "$ref": "#/$defs/IntakeSelections"
+        }
+      }
+    },
+    "ToolFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "error"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "error": {
+          "$ref": "#/$defs/Issue"
+        }
+      }
+    },
+    "IncidentGeography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "place": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "postal_code": {
+          "type": "string",
+          "pattern": "^[0-9]{5}(-[0-9]{4})?$"
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "state": {
+          "enum": [
+            "AK",
+            "AL",
+            "AR",
+            "AS",
+            "AZ",
+            "CA",
+            "CO",
+            "CT",
+            "DC",
+            "DE",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "IA",
+            "ID",
+            "IL",
+            "IN",
+            "KS",
+            "KY",
+            "LA",
+            "MA",
+            "MD",
+            "ME",
+            "MI",
+            "MN",
+            "MO",
+            "MP",
+            "MS",
+            "MT",
+            "NC",
+            "ND",
+            "NE",
+            "NH",
+            "NJ",
+            "NM",
+            "NV",
+            "NY",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VA",
+            "VI",
+            "VT",
+            "WA",
+            "WI",
+            "WV",
+            "WY"
+          ]
+        },
+        "county_fips": {
+          "type": "string",
+          "pattern": "^[0-9]{5}$"
+        }
+      }
+    },
+    "IncidentToolArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location_scope"
+      ],
+      "properties": {
+        "location_scope": {
+          "enum": [
+            "current",
+            "damaged"
+          ]
+        },
+        "lookback_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365
+        }
+      }
+    },
+    "IncidentQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location_scope",
+        "geography",
+        "geography_state",
+        "crisis_type",
+        "lookback_days",
+        "start_at",
+        "end_at"
+      ],
+      "properties": {
+        "location_scope": {
+          "enum": [
+            "current",
+            "damaged"
+          ]
+        },
+        "geography": {
+          "$ref": "#/$defs/IncidentGeography"
+        },
+        "geography_state": {
+          "enum": [
+            "reported",
+            "unknown",
+            "invalid"
+          ]
+        },
+        "crisis_type": {
+          "enum": [
+            "flood",
+            "storm_hurricane",
+            "wildfire",
+            "earthquake",
+            "other",
+            "unknown"
+          ]
+        },
+        "lookback_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365
+        },
+        "start_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "end_at": {
+          "$ref": "#/$defs/Instant"
+        }
+      }
+    },
+    "IncidentSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "provider",
+        "url",
+        "issuer",
+        "location_scope",
+        "geography",
+        "retrieved_at",
+        "source_updated_at",
+        "fresh_until",
+        "verification_state",
+        "availability_state",
+        "referral_url"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "provider": {
+          "enum": [
+            "nws",
+            "usgs",
+            "openfema"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "issuer": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "location_scope": {
+          "enum": [
+            "current",
+            "damaged"
+          ]
+        },
+        "geography": {
+          "$ref": "#/$defs/IncidentGeography"
+        },
+        "retrieved_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "source_updated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fresh_until": {
+          "$ref": "#/$defs/Instant"
+        },
+        "verification_state": {
+          "enum": [
+            "official_api",
+            "unverified"
+          ]
+        },
+        "availability_state": {
+          "enum": [
+            "available",
+            "no_match",
+            "unknown",
+            "unavailable"
+          ]
+        },
+        "referral_url": {
+          "type": "string",
+          "maxLength": 1024
+        }
+      }
+    },
+    "IncidentRecordArea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "match",
+        "description"
+      ],
+      "properties": {
+        "match": {
+          "enum": [
+            "point_query",
+            "state_query",
+            "within_radius",
+            "county_match"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "radius_km": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "state": {
+          "enum": [
+            "AK",
+            "AL",
+            "AR",
+            "AS",
+            "AZ",
+            "CA",
+            "CO",
+            "CT",
+            "DC",
+            "DE",
+            "FL",
+            "GA",
+            "GU",
+            "HI",
+            "IA",
+            "ID",
+            "IL",
+            "IN",
+            "KS",
+            "KY",
+            "LA",
+            "MA",
+            "MD",
+            "ME",
+            "MI",
+            "MN",
+            "MO",
+            "MP",
+            "MS",
+            "MT",
+            "NC",
+            "ND",
+            "NE",
+            "NH",
+            "NJ",
+            "NM",
+            "NV",
+            "NY",
+            "OH",
+            "OK",
+            "OR",
+            "PA",
+            "PR",
+            "RI",
+            "SC",
+            "SD",
+            "TN",
+            "TX",
+            "UT",
+            "VA",
+            "VI",
+            "VT",
+            "WA",
+            "WI",
+            "WV",
+            "WY"
+          ]
+        },
+        "county_fips": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{5}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "WeatherAlertDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event",
+        "severity",
+        "certainty",
+        "urgency"
+      ],
+      "properties": {
+        "event": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 32
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "certainty": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 32
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "urgency": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 32
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "EarthquakeDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "magnitude",
+        "depth_km",
+        "review_status"
+      ],
+      "properties": {
+        "magnitude": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "depth_km": {
+          "type": "number"
+        },
+        "review_status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 32
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "DeclarationDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "disaster_number",
+        "declaration_type",
+        "incident_type",
+        "declaration_date",
+        "incident_begin_at",
+        "incident_end_at",
+        "designated_programs",
+        "household_eligibility"
+      ],
+      "properties": {
+        "disaster_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "declaration_type": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "incident_type": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "declaration_date": {
+          "$ref": "#/$defs/Instant"
+        },
+        "incident_begin_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "incident_end_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "designated_programs": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "individuals_households",
+            "individual_assistance",
+            "public_assistance",
+            "hazard_mitigation"
+          ],
+          "properties": {
+            "individuals_households": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "individual_assistance": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "public_assistance": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "hazard_mitigation": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            }
+          }
+        },
+        "household_eligibility": {
+          "enum": [
+            "unknown"
+          ]
+        }
+      }
+    },
+    "IncidentRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "provider_record_id",
+        "kind",
+        "title",
+        "url",
+        "summary",
+        "instructions",
+        "effective_at",
+        "source_updated_at",
+        "expires_at",
+        "geographic_scope",
+        "details",
+        "source_id",
+        "text_truncated"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "provider_record_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "kind": {
+          "enum": [
+            "weather_alert",
+            "earthquake",
+            "disaster_declaration"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "url": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 512
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "instructions": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 512
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "source_updated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "geographic_scope": {
+          "$ref": "#/$defs/IncidentRecordArea"
+        },
+        "details": {
+          "type": "object"
+        },
+        "source_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "text_truncated": {
+          "type": "boolean"
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "kind": {
+              "enum": [
+                "weather_alert"
+              ]
+            },
+            "details": {
+              "$ref": "#/$defs/WeatherAlertDetails"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "enum": [
+                "earthquake"
+              ]
+            },
+            "details": {
+              "$ref": "#/$defs/EarthquakeDetails"
+            }
+          }
+        },
+        {
+          "properties": {
+            "kind": {
+              "enum": [
+                "disaster_declaration"
+              ]
+            },
+            "details": {
+              "$ref": "#/$defs/DeclarationDetails"
+            }
+          }
+        }
+      ]
+    },
+    "IncidentProviderResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "source",
+        "records",
+        "truncated",
+        "issue"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "available",
+            "no_match",
+            "unknown",
+            "unavailable"
+          ]
+        },
+        "source": {
+          "$ref": "#/$defs/IncidentSource"
+        },
+        "records": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/IncidentRecord"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "issue": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Issue"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "IncidentContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "query",
+        "retrieved_at",
+        "state",
+        "providers",
+        "notices"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "query": {
+          "$ref": "#/$defs/IncidentQuery"
+        },
+        "retrieved_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "state": {
+          "enum": [
+            "available",
+            "no_match",
+            "partial",
+            "unknown",
+            "unavailable",
+            "stale"
+          ]
+        },
+        "providers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nws",
+            "usgs",
+            "openfema"
+          ],
+          "properties": {
+            "nws": {
+              "$ref": "#/$defs/IncidentProviderResult"
+            },
+            "usgs": {
+              "$ref": "#/$defs/IncidentProviderResult"
+            },
+            "openfema": {
+              "$ref": "#/$defs/IncidentProviderResult"
+            }
+          }
+        },
+        "notices": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        }
       }
     }
   }

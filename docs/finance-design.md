@@ -2,6 +2,8 @@
 
 Status: supporting financial design. The consolidated [project specification](project-specification.md) controls scope and resolves implementation defaults.
 
+Implementation status: C08 is `IN_PROGRESS`. The browser prototype in `frontend/finance-engine.js` reproduces the four canonical demonstration forecasts in bounded offline checks. Full finance contracts, unknown/restricted-input handling, updates/reconciliation, and backend integration remain pending; current evidence lives in the [component tracker](contracts-and-progress.md).
+
 Updated: October 10, 2026.
 
 ## Purpose and challenge fit

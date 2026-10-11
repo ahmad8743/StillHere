@@ -1,0 +1,12 @@
+# Native Codex read denial for local credential files, when this profile is active.
+# Existing managed/current-session policy may override profile selection.
+default_permissions = "stillhere"
+
+[permissions.stillhere]
+extends = ":workspace"
+
+[permissions.stillhere.filesystem.":workspace_roots"]
+".env" = "deny"
+".env.local" = "deny"
+"**/.env" = "deny"
+"**/.env.local" = "deny"

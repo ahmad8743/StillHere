@@ -1,6 +1,6 @@
 # Strands capabilities and StillHere fit
 
-Reviewed October 10, 2026 through the Strands website in the browser, including its Python documentation. This is research and proposed sequencing, not an implementation or contract freeze. C02 remains `NOT_STARTED`; the implemented case/intake boundary remains contract `0.1`.
+Reviewed October 10, 2026 through the Strands website in the browser, including its Python documentation. The broad capability map remains research and proposed sequencing. The C01-facing read/fact/intake adapters, bounded C02 runtime and C03 incident adapters/tool are READY_FOR_INTEGRATION with Strands `1.59.0`. The default live Bedrock proof passed with user-selected Claude Sonnet 4.5; public C03 source checks pass separately with synthetic geography. The broader C02 component remains IN_PROGRESS for the later tools/output contracts below. The public boundary remains `0.1`. C09 is outside this chat's current work. See the [implementation handoff](agent-integration.md) and [C03 handoff](incident-integration.md).
 
 ## Which part of Strands we need
 
@@ -52,13 +52,13 @@ The [AgentCore Memory integration](https://strandsagents.com/docs/integrations/s
 
 ## Planned tool inventory
 
-This inventory covers the [application's conceptual tools](project-specification.md#conceptual-tool-contract), [command contracts and component ownership](contracts-and-progress.md), and [finance tool responsibilities](finance-design.md#agent-tool-responsibilities). Names below are proposed internal registry names, not new public command types or frozen payload schemas. Except for the existing case read, fact-correction, and intake services, the domain handlers are still planned. None of these Strands adapters is implemented yet.
+This inventory covers the [application's conceptual tools](project-specification.md#conceptual-tool-contract), [command contracts and component ownership](contracts-and-progress.md), and [finance tool responsibilities](finance-design.md#agent-tool-responsibilities). Names below are internal registry names, not new public command types. Read/fact/intake and C03 incident adapters are implemented with shared schemas; other agent/domain adapters remain planned. P2's browser finance and chat prototypes exist in `frontend/`, with C08/C09 `IN_PROGRESS`; their finance agent tools and frontend/backend integration are still pending. Default registration contains read/fact tools, with intake and incident retrieval independently opt-in.
 
 Strands supplies the callable-tool interface and orchestration. Our services supply disaster lookup, recovery rules, planning, finance calculations, permissions, and persistence. We will use the following specific SDK features:
 
 | Feature used below | Planned use |
 | --- | --- |
-| **Custom tool** | Python `@tool(context=True)` with typed arguments and an explicit `input_schema` where needed. `ToolContext.invocation_state` carries backend-supplied session/case authority and turn context outside model-selected arguments. The adapter calls the owning application service. [Custom tools](https://strandsagents.com/docs/user-guide/sdk/tools/custom-tools/). |
+| **Custom tool** | Python `@tool(context=True)` with typed arguments and the SDK's explicit `inputSchema={"json": ...}` override where needed (verified against pinned `1.59.0`). `ToolContext.invocation_state` carries backend-supplied session/case authority and turn context outside model-selected arguments. The adapter calls the owning application service. [Custom tools](https://strandsagents.com/docs/user-guide/sdk/tools/custom-tools/). |
 | **Consent interruption** | Strands human-in-the-loop interrupt/resume when an action lacks required explicit consent. Resume only after the application accepts the authenticated user's consent action; an LLM-generated permission field cannot authorize it. Existing valid consent does not require another prompt. [Human input](https://strandsagents.com/docs/user-guide/sdk/agents/interventions/human-in-the-loop/). |
 | **Memory search** | A later `MemoryManager` registers its documented `search_memory` tool against a custom, initially read-only `MemoryStore` on Akamai. The backend fixes household/case scope. [Memory controls](https://strandsagents.com/docs/user-guide/sdk/memory/managing-memory/). |
 
@@ -68,15 +68,15 @@ All custom tools also share `BeforeToolCallEvent` / `AfterToolCallEvent` hooks f
 
 | Planned tool | Result and contract boundary | Strands feature | Slice |
 | --- | --- | --- | --- |
-| `read_case` | Read the latest authorized `CaseSnapshot`, including unknown/pending states. Backend context fixes which household/case may be read. | Custom tool | First C02 slice |
-| `correct_fact` | Submit `fact.correct` with `FactCorrectionPayload`; C01 derives provenance, checks the version, audits the change, and marks affected derived outputs pending. Facts cannot grant consent or alter the ledger. | Custom tool | First C02 slice |
-| `submit_intake` | Submit `intake.submit` using the existing `IntakeSelections` vocabulary. Partial answers remain valid; selections do not imply household headcounts, financial amounts, or sharing permission. | Custom tool | Later intake/chat integration |
+| `read_case` (implemented) | Read the latest authorized `CaseSnapshot`, including unknown/pending states. Backend context fixes which household/case may be read. | Custom tool | First C02 slice |
+| `correct_fact` (implemented) | Submit `fact.correct` with `FactCorrectionPayload`; C01 derives provenance, checks the version, audits the change, and marks affected derived outputs pending. Facts cannot grant consent or alter the ledger. | Custom tool | First C02 slice |
+| `submit_intake` (implemented, opt-in) | Submit `intake.submit` using the existing `IntakeSelections` vocabulary. Partial answers remain valid; selections do not imply household headcounts, financial amounts, or sharing permission. | Custom tool | Later intake/chat integration |
 
 ### Incident, resources, and reviewed knowledge — C03/C04, P1
 
 | Planned tool | Result and contract boundary | Strands feature | Slice |
 | --- | --- | --- | --- |
-| `get_incident_context` | One facade over NWS, USGS, and OpenFEMA adapters: relevant alerts/events/declarations with source, scope, update/expiry times, and retrieval status. A declaration does not establish household eligibility. | Custom tool | C03 |
+| `get_incident_context` (implemented, opt-in) | NWS/USGS/OpenFEMA facade using backend-reported current/damaged geography; CaseService commits typed context/source attribution with version/run/replay checks. Missing geography, no match, provider failure, truncation and stale inputs remain distinct. A declaration does not establish household eligibility. [Handoff](incident-integration.md). | Custom tool | C03 READY_FOR_INTEGRATION |
 | `find_resources` | Return catalog/referral candidates with coverage, contacts, requirements, and known availability. Add 211 only if access permits it; a directory listing does not confirm live capacity. | Custom tool | C04 |
 | `retrieve_program_rules` | Read published, reviewed requirements scoped to issuer, program, jurisdiction, incident, and effective version; preserve unknown/conflicting results and official references. | Custom tool | C04 |
 | `fetch_official_source` | Retrieve bounded content from approved official APIs/pages/forms when published knowledge is insufficient. Preserve source and retrieval metadata; treat retrieved text as data rather than agent instructions. | Custom tool | C04/C06 |
@@ -163,6 +163,6 @@ Before enabling each adapter, verify contract-shape validation, scoped access, r
 2. Derive tool and output schemas from the shared contracts. Model output still requires application validation. Bedrock strict tool schemas have restrictions, so verify compatibility instead of changing public payloads to match a provider. [Bedrock schema options](https://strandsagents.com/docs/user-guide/sdk/model-providers/amazon-bedrock/).
 3. Configure loop/token limits, per-model output caps, timeouts, and bounded retries. SDK token limits are checked between loop iterations and can overshoot during a call; cancellation does not undo an accepted case command. [Lifecycle behavior](https://strandsagents.com/docs/user-guide/sdk/agents/lifecycle-controls/).
 4. Pin and verify the Python SDK release before selecting APIs. The newer context-strategy API is marked experimental; documented sliding-window and summarizing conversation managers offer a simpler starting point. [Context API status](https://strandsagents.com/docs/user-guide/sdk/context-management/), [version policy](https://strandsagents.com/docs/user-guide/sdk/versioning-and-support/).
-5. Keep the [planned first C02 slice](contracts-and-progress.md#c02-first-slice-and-tool-extensions--planned) bounded: one Bedrock model, durable turns, current scoped case context, two application tools, failure/replay checks, and usage limits. A memory manager can automatically register a search tool and extraction can add model calls, so introduce those features in a later slice with explicit tool and cost budgets. [Memory configuration](https://strandsagents.com/docs/user-guide/sdk/memory/managing-memory/).
+5. Keep the [bounded first C02 slice](contracts-and-progress.md#c02-first-slice-and-tool-extensions--implemented-locally) bounded: one Bedrock model, durable turns, current scoped case context, two application tools, failure/replay checks, and usage limits. A memory manager can automatically register a search tool and extraction can add model calls, so introduce those features in a later slice with explicit tool and cost budgets. [Memory configuration](https://strandsagents.com/docs/user-guide/sdk/memory/managing-memory/).
 
-This research does not require credentials. Live C02 verification still needs accessible Bedrock model/region configuration; deployment needs Akamai access.
+The implemented adapters and real-SDK scripted-model checks require no credentials. Live C02 verification needs accessible Bedrock model/region and AWS credentials in the private `.env.local` or credential chain. Deployment still needs Akamai access. [Configuration and live proof](agent-integration.md#run-locally-and-configure-bedrock).

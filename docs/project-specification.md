@@ -4,7 +4,7 @@ Status: consolidated product specification for implementation handoff.
 
 Date: October 10, 2026. Build timebox: 12 hours of dedicated prototyping with coding agents.
 
-This document is the authoritative high-level specification. It consolidates discovery, recovery finance, and the accepted check-in approach. Product scope and behavior are defined here; implementation sessions select concrete infrastructure, frameworks, model configuration, and provider setup. P1 has implemented the C01 private case-service and intake-persistence foundation; the full application and deployment remain pending. Current implementation evidence is recorded in the component tracker.
+This document is the authoritative high-level specification. It consolidates discovery, recovery finance, and the accepted check-in approach. Product scope and behavior are defined here; implementation sessions select concrete infrastructure, frameworks, model configuration, and provider setup. P1's C01 private case/intake foundation, bounded C02 agent runtime, and C03 incident adapters/tool are available for integration. P2's C08 finance and C09 intake/chat browser prototypes are in progress. The full application, frontend/backend integration, and deployment remain pending. Current statuses and verification evidence are recorded in the [component tracker](contracts-and-progress.md).
 
 Accepted follow-up scope: optional scheduled check-ins, optional last-shared location, and a simulated human follow-up queue. The [monitoring design](monitoring-design.md) and [partner research](response-partner-discovery.md) are supporting background. Detailed local partner discovery and live response operations belong to a later pilot; they do not block this MVP plan.
 

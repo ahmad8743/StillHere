@@ -57,9 +57,22 @@ def _correct_fact(snapshot, payload, occurred_at):
     snapshot["facts"][payload["fact_key"]] = user_fact(payload["value"], payload["observed_at"])
 
 
+def assistant_turn_id(case_id, event_id):
+    return "turn_" + hashlib.sha256(f"{case_id}\0{event_id}\0assistant".encode()).hexdigest()[:32]
+
+
+def _conversation_message(snapshot, payload, occurred_at):
+    turns = snapshot["conversation"]["turns"]
+    turns.append({
+        "id": payload["message_id"], "role": "user", "text": payload["text"],
+        "created_at": occurred_at, "state": "complete",
+    })
+
+
 COMMAND_HANDLERS = {
     "fact.correct": ("FactCorrectionPayload", _correct_fact),
     "intake.submit": ("IntakeSelections", _apply_intake),
+    "conversation.message": ("ConversationMessagePayload", _conversation_message),
 }
 
 
@@ -71,14 +84,33 @@ def apply_command(snapshot, command, received_at):
     """Apply an already validated command to a copy, preserving the prior audit state."""
     updated = copy.deepcopy(snapshot)
     COMMAND_HANDLERS[command["type"]][1](updated, command["payload"], command["occurred_at"])
+    if command["type"] == "conversation.message":
+        if "choice_id" in command["payload"]:
+            updated["conversation"]["turns"][-1]["choice_id"] = command["payload"]["choice_id"]
+        updated["conversation"]["turns"].append({
+            "id": assistant_turn_id(command["case_id"], command["event_id"]),
+            "event_id": command["event_id"], "role": "assistant", "text": "",
+            "created_at": received_at, "state": "queued",
+        })
     updated["case_version"] += 1
     updated["updated_at"] = received_at
-    if updated["plan"]["state"] != "not_requested":
+    changed_inputs = ({command["payload"]["fact_key"]} if command["type"] == "fact.correct"
+                      else set(command["payload"]) if command["type"] == "intake.submit" else set())
+    for scope, incident in updated.get("incident_context", {}).items():
+        if changed_inputs & {scope + "_location", "crisis_type"}:
+            incident["state"] = "stale"
+            source_ids = {provider["source"]["id"] for provider in incident["providers"].values()}
+            for provider in incident["providers"].values():
+                provider["source"]["fresh_until"] = min(provider["source"]["fresh_until"], received_at)
+            for source in updated["sources"]:
+                if source.get("id") in source_ids:
+                    source["fresh_until"] = min(source["fresh_until"], received_at)
+    if command["type"] != "conversation.message" and updated["plan"]["state"] != "not_requested":
         updated["plan"]["state"] = "pending"
         updated["plan"]["pending_input_case_version"] = updated["case_version"]
     if updated["finance"]["state"] == "not_calculated":
         updated["finance"]["input_case_version"] = updated["case_version"]
-    else:
+    elif command["type"] != "conversation.message":
         updated["finance"]["state"] = "pending"
         updated["finance"]["pending_input_case_version"] = updated["case_version"]
     validate("CaseSnapshot", updated)

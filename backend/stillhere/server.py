@@ -6,6 +6,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
 from .commands import COMMAND_HANDLERS
+from .agent import AgentConfig, AgentRuntime
+from .agent.config import load_local_environment
 from .contracts import InvalidInput, VERSION, canonical_json, validate
 from .service import CaseService, ServiceError
 
@@ -15,8 +17,9 @@ MAX_BODY_BYTES = 64 * 1024
 class CaseHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address, service):
+    def __init__(self, address, service, agent_runtime=None):
         self.service = service
+        self.agent_runtime = agent_runtime or AgentRuntime(service)
         super().__init__(address, Handler)
 
 
@@ -90,8 +93,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/v1/cases":
             result = self.server.service.create_case(self._token(), body)
         else:
-            result = self.server.service.execute(self._token(), body)
-        status = {"applied": 200, "already_applied": 200, "conflict": 409, "rejected": 400, "unavailable": 503}[result["status"]]
+            result = self.server.agent_runtime.handle(self._token(), body)
+        status = {"applied": 200, "already_applied": 200, "conflict": 409, "rejected": 400, "unavailable": 503, "needs_clarification": 200}[result["status"]]
         codes = {issue["code"] for issue in result["issues"]}
         if "unauthorized" in codes:
             status = 401
@@ -111,12 +114,16 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="StillHere local C01 case service")
+    parser = argparse.ArgumentParser(description="StillHere local case and agent service")
     parser.add_argument("--db", default="var/cases.sqlite3")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--env-file", help="Explicit optional local environment file, e.g. .env.local")
     args = parser.parse_args()
-    server = CaseHTTPServer(("127.0.0.1", args.port), CaseService(args.db))
-    print(f"StillHere C01 listening at http://127.0.0.1:{server.server_port}; contract {VERSION}")
+    if args.env_file:
+        load_local_environment(args.env_file)
+    service = CaseService(args.db)
+    server = CaseHTTPServer(("127.0.0.1", args.port), service, AgentRuntime(service, AgentConfig.from_environment()))
+    print(f"StillHere listening at http://127.0.0.1:{server.server_port}; contract {VERSION}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

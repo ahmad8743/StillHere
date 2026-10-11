@@ -52,6 +52,7 @@ def _validate(schema, value, path):
         "object": isinstance(value, dict), "array": isinstance(value, list),
         "string": isinstance(value, str),
         "integer": type(value) in (int, float) and value % 1 == 0,
+        "number": type(value) in (int, float),
         "boolean": type(value) is bool, "null": value is None,
     }
     if expected and not any(checks[kind] for kind in ([expected] if isinstance(expected, str) else expected)):
@@ -93,7 +94,9 @@ def _validate(schema, value, path):
         except (ValueError, ZoneInfoNotFoundError):
             raise InvalidInput(path, "Use a valid UTC instant or IANA time zone.") from None
     if type(value) in (int, float) and value < schema.get("minimum", float("-inf")):
-        raise InvalidInput(path, "Integer is below the allowed minimum.")
+        raise InvalidInput(path, "Number is below the allowed minimum.")
+    if type(value) in (int, float) and value > schema.get("maximum", float("inf")):
+        raise InvalidInput(path, "Number is above the allowed maximum.")
 
 
 def empty_case(case_id, time_zone, now):
