@@ -1,6 +1,6 @@
 # Strands capabilities and StillHere fit
 
-Reviewed October 10, 2026 through the Strands website in the browser, including its Python documentation. The broad capability map remains research and proposed sequencing. The C01-facing read/fact/intake adapters, bounded C02 runtime and C03 incident adapters/tool are READY_FOR_INTEGRATION with Strands `1.59.0`. The default live Bedrock proof passed with user-selected Claude Sonnet 4.5; public C03 source checks pass separately with synthetic geography. All five bounded C04 slices are READY_FOR_INTEGRATION: referrals, published rule graphs, bounded official fetching, separate candidate/discrepancy submissions and local manual publication with immutable history. Offline SDK/workflow evidence passes; prior rules/referrals live proofs pass at 14.992/18.535 seconds. The new knowledge failure/discrepancy branch passes live at 13.569 seconds; the national strict-fetch model/reply/replay proof now passes at 13.265 seconds; Colorado live candidate extraction remains pending; policy coverage remains partial. The broader C02 component remains IN_PROGRESS for the later tools/output contracts below. The public boundary remains `0.1`. C09 is outside this chat's current work. See the [implementation handoff](agent-integration.md), [C03 handoff](incident-integration.md), [C04 referral handoff](resource-integration.md), [C04 rules handoff](program-rules-integration.md), and [C04 fetch/review handoff](knowledge-review-integration.md).
+Reviewed October 10, 2026 through the Strands website in the browser, including its Python documentation. The broad capability map remains research and proposed sequencing. The C01-facing read/fact/intake adapters, bounded C02 runtime and C03 incident adapters/tool are READY_FOR_INTEGRATION with Strands `1.59.0`. The default live Bedrock proof passed with user-selected Claude Sonnet 4.5; public C03 source checks pass separately with synthetic geography. All five bounded C04 slices are READY_FOR_INTEGRATION: referrals, published rule graphs, bounded official fetching, separate candidate/discrepancy submissions and local manual publication with immutable history. Offline SDK/workflow evidence passes; prior rules/referrals live proofs pass at 14.992/18.535 seconds. The new knowledge failure/discrepancy branch passes live at 13.569 seconds; the national strict-fetch model/reply/replay proof now passes at 13.265 seconds; Colorado live candidate extraction remains pending; policy coverage remains partial. C05 is IN_PROGRESS with evaluation, saved-plan revision and task-report slices READY_FOR_INTEGRATION; live planner/workflow proofs remain pending. The broader C02 component remains IN_PROGRESS for the later tools/output contracts below. The public boundary remains `0.1`. C09 is outside this chat's current work. See the [implementation handoff](agent-integration.md), [C03 handoff](incident-integration.md), [C04 referral handoff](resource-integration.md), [C04 rules handoff](program-rules-integration.md), and [C04 fetch/review handoff](knowledge-review-integration.md).
 
 ## Which part of Strands we need
 
@@ -52,7 +52,7 @@ The [AgentCore Memory integration](https://strandsagents.com/docs/integrations/s
 
 ## Planned tool inventory
 
-This inventory covers the [application's conceptual tools](project-specification.md#conceptual-tool-contract), [command contracts and component ownership](contracts-and-progress.md), and [finance tool responsibilities](finance-design.md#agent-tool-responsibilities). Names below are internal registry names, not new public command types. Read/fact/intake, C03 incident adapters and all five C04 tools are implemented with shared schemas; other agent/domain adapters remain planned. P2's browser finance and chat prototypes exist in `frontend/`, with C08/C09 `IN_PROGRESS`; their finance agent tools and frontend/backend integration are still pending. Default registration contains read/fact tools, with intake, incident retrieval and reviewed resource referrals, rule lookup and public source/review groups opt-in. Review enables its required fetch tool.
+This inventory covers the [application's conceptual tools](project-specification.md#conceptual-tool-contract), [command contracts and component ownership](contracts-and-progress.md), and [finance tool responsibilities](finance-design.md#agent-tool-responsibilities). Names below are internal registry names, not new public command types. Read/fact/intake, C03 incident adapters, all five C04 tools and all three bounded C05 tools are implemented with shared schemas; other agent/domain adapters remain planned. P2's browser finance and chat prototypes exist in `frontend/`, with C08/C09 `IN_PROGRESS`; their finance agent tools and frontend/backend integration are still pending. Default registration contains read/fact tools, with intake, incident retrieval and reviewed resource referrals, rule lookup, public source/review and read-only planner groups opt-in. Review enables its required fetch tool.
 
 Strands supplies the callable-tool interface and orchestration. Our services supply disaster lookup, recovery rules, planning, finance calculations, permissions, and persistence. We will use the following specific SDK features:
 
@@ -89,9 +89,9 @@ Each external adapter uses a documented API where available. Strands `MCPClient`
 
 | Planned tool | Result and contract boundary | Strands feature | Slice |
 | --- | --- | --- | --- |
-| `evaluate_recovery_options` | Run the deterministic prerequisite/constraint planner against current facts and published rules. Return feasible actions, blockers, source-supported alternatives, unanswered questions, and dated cost inputs. Unknown requirements/costs remain unknown. | Custom tool | C05 |
-| `revise_recovery_plan` | Request a validated plan revision, retaining completed work and reasons for changes. C01 commits only a result matching the source case version. The internal planner-result/commit schema still needs agreement; this does not introduce a public `plan.update` command. | Custom tool | C05 |
-| `update_task` | Submit `task.update` for completion, skipping, or inability; preserve history and trigger reassessment of affected steps. | Custom tool | C05 |
+| `evaluate_recovery_options` (implemented, opt-in) | Read-only deterministic AND/OR evaluation against exact Boolean case availability/completion facts and published rules. Return provisional/blocked paths, necessary blockers/questions, sourced OR/sibling alternatives, explicit access constraints and null costs. Partial coverage cannot establish full feasibility or eligibility. [Handoff](planner-integration.md). | Custom tool | First C05 slice READY_FOR_INTEGRATION; full C05 IN_PROGRESS |
+| `revise_recovery_plan` (implemented, opt-in) | CaseService recomputes published requirements and atomically saves a scoped plan revision, sources/version/audit; preserve completed/skipped/removed work and reject stale/deadline/conflict inputs. Return a bounded `RecoveryMutationResult`; no public `plan.update` command. | Custom tool | C05 revision slice READY_FOR_INTEGRATION |
+| `update_task` (implemented, opt-in) | Submit `task.update` for explicit completion/skipping/inability or resolution; retain user-report history and timestamps, immediately reassess the affected route and mark plan pending. No eligibility, evidence, facts, money or consent inference. | Custom tool | C05 task-report slice READY_FOR_INTEGRATION |
 | `prepare_application` | Prepare draft answers, evidence checklists, or call scripts from scoped facts and sources. Leave unknown answers blank and retain evidence references. Agree the draft-result/commit schema before storing it; no external submission occurs. | Custom tool | C06 |
 | `update_application` | Submit `application.update` for a user-reported stage, correspondence, or evidence change; revise the next step without claiming agency approval. | Custom tool | C06 |
 
@@ -167,8 +167,10 @@ Before enabling each adapter, verify contract-shape validation, scoped access, r
 
 The implemented adapters and real-SDK scripted-model checks require no credentials. Live C02 verification needs accessible Bedrock model/region and AWS credentials in the private `.env.local` or credential chain. Deployment still needs Akamai access. [Configuration and live proof](agent-integration.md#run-locally-and-configure-bedrock).
 
-Next implementation is C05's deterministic prerequisite/constraint planner
-using current scoped facts and published rules, retaining unknowns. All five
+C05's first deterministic read-only prerequisite/constraint planner is now
+READY_FOR_INTEGRATION, using current scoped Boolean facts and published rules
+while retaining unknowns. Full C05 stays IN_PROGRESS for deeper evidence/dependency links, trusted agency
+confirmations and dated costs; the live Sonnet/planner/workflow proofs remain pending. All five
 bounded C04 slices reached readiness with 186 non-HTTP checks (24 referral,
 28 rule, 34 fetch/review and 16 real-SDK checks). That full 191-check discovery retained
 five host loopback-bind errors. Prior rules/resources live proofs pass. The new user-run `--knowledge` proof
@@ -191,9 +193,25 @@ smoke now exercise fresh text, source-backed saved reply, unchanged domains and
 replay. There is no seeded fallback or Colorado review/publication scope for this
 source. Web-reader access succeeds; direct Codex backend DNS failures and the
 user-terminal/live-model evidence remain distinct. The latter now passes at
-13.265 seconds with one tool call and available retrieval; C05 stays
-NOT_STARTED, with its successful-fetch prerequisite satisfied. [Working example](knowledge-review-integration.md#working-live-fetch-example--verified).
+13.265 seconds with one tool call and available retrieval; C05's successful-fetch
+prerequisite is satisfied and its read-only first slice is now ready. [Working example](knowledge-review-integration.md#working-live-fetch-example--verified).
 
 Current strict-fetch validation: 203 non-HTTP checks and 17 real-SDK checks
 pass; discovery contains 208 tests. The new example has ten focused checks.
 User-terminal live success now passes, clearing the prerequisite before C05.
+
+C05 validation adds 28 planner and two real-SDK checks; the focused planner/rule/SDK
+run passes 75 checks. Later shared discovery runs 295 checks with 290 passes
+(including 57 concurrent finance checks and 19 real-SDK checks) and five existing
+HTTP loopback-bind errors. The new opt-in flag is
+`STILLHERE_AGENT_ENABLE_PLANNER=true`; it adds evaluation independently of rule
+lookup. No saved plan/task/finance or policy writes occur. Live planner proof and
+P2 review remain separate. [Contracts, semantics and user tests](planner-integration.md).
+
+Two additional C05 slices are now READY_FOR_INTEGRATION: CaseService saved-plan
+revision and task reporting/reassessment. Independent flags are
+`STILLHERE_AGENT_ENABLE_PLAN_REVISION=true` and `STILLHERE_AGENT_ENABLE_TASKS=true`.
+New writes expose compact model summaries while full data/audit remain in C01.
+108 focused checks and all 325 non-HTTP checks pass among 330 discovered, including
+21 real-SDK checks. Live `--plan`, P2 review and broader C05 gates remain pending.
+[Updated handoff](planner-integration.md#saved-plan-revision--second-slice-ready-for-integration).

@@ -7,8 +7,8 @@ from typing import Any
 
 from ..contracts import InvalidInput, SCHEMA, canonical_json, validate
 from ..service import ServiceError
-from .tools import (AgentFailure, correct_fact, failure, fetch_official_source, find_resources, get_incident_context,
-                    propose_rule_candidate, read_case, report_rule_discrepancy, retrieve_program_rules, submit_intake)
+from .tools import (AgentFailure, correct_fact, evaluate_recovery_options, failure, fetch_official_source, find_resources, get_incident_context,
+                    propose_rule_candidate, read_case, report_rule_discrepancy, retrieve_program_rules, revise_recovery_plan, submit_intake, update_task)
 
 
 @dataclass(frozen=True)
@@ -44,6 +44,12 @@ CANDIDATE_TOOL = ToolDefinition("propose_rule_candidate", "Queue structured publ
                                "RuleCandidateToolArguments", "KnowledgeSubmissionResult", propose_rule_candidate, access="public_review_commit", component="C04/C02")
 DISCREPANCY_TOOL = ToolDefinition("report_rule_discrepancy", "Queue a structured public-source discrepancy for manual review after fetching the source in this turn. Failed-source reports use reason source_unavailable without text offsets. Content reports need a current live public excerpt (start/end, at most 800 characters). Program/base version and explicit document issuer must match. No household narrative, copied case data, rule publication or case-domain update occurs.",
                                  "RuleDiscrepancyToolArguments", "KnowledgeSubmissionResult", report_rule_discrepancy, access="public_review_commit", component="C04/C02")
+PLANNER_TOOL = ToolDefinition("evaluate_recovery_options", "Read-only deterministic evaluation of published AND/OR requirements for a program and optional exact version, using backend-scoped Boolean case facts. Seeds: co_state_id_replacement and the separately scoped co_state_id_proof_options. Return provisional/blocked options, required blockers/questions, sourced OR branches and sibling paths. No car does not prove an office is unreachable; office_transport_available and internet_access are explicit access checks. Missing, stale, conflicting and invalid facts remain unknown. Agency confirmations need source-supported provenance. Coverage, eligibility and fees stay unknown; no saved plan, task, finance, policy or application changes occur. Never request credential numbers or infer eligibility from a matching Boolean report.",
+                              "RecoveryOptionToolArguments", "RecoveryOptionResult", evaluate_recovery_options, component="C05/C02")
+PLAN_REVISION_TOOL = ToolDefinition("revise_recovery_plan", "Save a deterministic plan revision for a requested program and optional exact published version. CaseService recomputes requirements from authorized case inputs; do not supply a plan, facts, costs or authority. Preserve completed/skipped work and source attribution, keep partial routes provisional and fees/eligibility unknown. This saves recovery alternatives; it never submits an application or asserts agency approval.",
+                                   "ReviseRecoveryPlanToolArguments", "RecoveryMutationResult", revise_recovery_plan, access="read_and_commit", component="C05/C02")
+TASK_TOOL = ToolDefinition("update_task", "Record an explicit user report about a saved planner action: status completed/skipped, or an allowlisted inability_reason. A null inability_reason withdraws/resolves a prior inability report without declaring the route ready. Use only the user's stated intent and an existing action ID. Completion is user-reported, not verified eligibility or an application approval. No car alone triggers clarification about other transport. Never infer facts, document availability, money or consent. Completed work cannot be undone by this tool.",
+                          "TaskUpdatePayload", "RecoveryMutationResult", update_task, access="write", component="C05/C02")
 
 
 def inline_schema(name):
@@ -104,6 +110,14 @@ class ToolRegistry:
             # Strands also builds a Python input validator from the signature. Expose
             # explicit names there, then validate exact values against our shared schema.
             schema = inline_schema(definition.arguments_schema)
+            if definition.arguments_schema == "TaskUpdatePayload":
+                # Claude rejects top-level composition in tool input schemas.
+                # Expose the existing object envelope; raw input still passes the
+                # authoritative union validator in the hook and invoke().
+                schema.pop("anyOf")
+                schema["additionalProperties"] = False
+                schema["description"] = ("Provide action_id and exactly one of status or inability_reason. "
+                                         "Explicit null inability_reason resolves a prior inability report.")
             required = schema.get("required", [])
             invoke.__signature__ = inspect.Signature([
                 inspect.Parameter(key, inspect.Parameter.KEYWORD_ONLY, annotation=Any,

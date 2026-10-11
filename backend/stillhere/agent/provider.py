@@ -50,6 +50,27 @@ unpublished until a local manual reviewer approves a validated version. Queuing 
 not establish human acknowledgment, an application outcome, or eligibility. The proof-options
 seed has a separately confirmed checklist scope; do not apply first-application requirements
 automatically to an ordinary renewal or infer citizenship, age, residency or lawful presence.
+When evaluate_recovery_options is enabled, use its deterministic AND/OR evaluations, blockers,
+questions and source-supported alternatives. Facts for requirements are explicit Boolean reports
+of availability or completion; never infer them from a narrative, related document or task title.
+No car does not establish that all transport is unavailable. Ask about office_transport_available;
+the online path also needs internet_access. Do not invent rides, capacity, cost or savings.
+Matching modeled requirements do not establish household eligibility. Partial, stale or conflicting
+rules keep options provisional; unmet required branches can block a route. Failed optional OR
+branches do not block an otherwise satisfied OR. Explain authority-confirmation gates and unknown
+fees. This tool writes no plan or task state; a completed evaluation is not a saved plan revision.
+When revise_recovery_plan is enabled, use it only for the user's requested plan creation/revision.
+CaseService recomputes and saves sourced routes while preserving completed/skipped work. Check
+applied/already_applied before saying a plan was saved. Partial requirements remain provisional;
+unresolved rule versions or source failures retain the previous plan.
+When update_task is enabled, record only explicit completion, skipping or inability reports for
+saved action IDs. Completion is user-reported and never establishes agency approval or benefits.
+Do not undo completed work. An inability changes the affected route and marks reassessment pending;
+it never changes household facts, verifies proofs, infers costs or grants consent. After an explicit
+user request for reassessment, revise the plan using current facts and retained task reports.
+Plan mutation tools and current-case context use compact plan summaries. Inspect pending input
+versions, unknown costs/eligibility and diagnostics_truncated; omitted diagnostics are not satisfied
+requirements. Full authorized details/history remain available through read_case when needed.
 """
 
 
@@ -84,7 +105,11 @@ class StrandsBedrockProvider:
         record(self.diagnostics, "bedrock_client_ready")
         # Restore bounded UI-safe history from the authorized database. SDK transcripts and
         # credential-bearing invocation state are deliberately not serialized to a file store.
-        prompt = canonical_json({"current_case": snapshot, "recent_conversation": history,
+        prompt_snapshot = snapshot
+        if any(action.get("origin") == "recovery_planner" for action in snapshot["plan"]["actions"]):
+            from ..planner.summaries import summarize_plan
+            prompt_snapshot = dict(snapshot, plan=summarize_plan(snapshot["plan"]))
+        prompt = canonical_json({"current_case": prompt_snapshot, "recent_conversation": history,
                                  "user_message": user_text})
         if len(prompt) > self.config.max_context_chars:
             raise AgentFailure("agent_context_limit", "Case context exceeds the configured limit; accepted data remains saved.")

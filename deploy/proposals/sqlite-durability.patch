@@ -1,0 +1,10 @@
+--- a/backend/stillhere/service.py
++++ b/backend/stillhere/service.py
+@@ -86,6 +86,7 @@
+         try:
+             connection.row_factory = sqlite3.Row
+             connection.execute("PRAGMA foreign_keys=ON")
++            connection.execute("PRAGMA synchronous=FULL")
+             yield connection
+         finally:
+             connection.close()

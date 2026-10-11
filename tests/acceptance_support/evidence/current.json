@@ -1,0 +1,334 @@
+{
+  "recorded_at": "2026-10-11T08:37:42.537834+00:00",
+  "selected_groups": [
+    "transactions",
+    "proposals",
+    "gates",
+    "offline-handler",
+    "http"
+  ],
+  "tests_run": 59,
+  "failures": 13,
+  "errors": 4,
+  "passed": 42,
+  "blocking_checks": 14,
+  "blocked_http_checks": 3,
+  "skips": 0,
+  "source_digests_before": {
+    "backend/stillhere/service.py": "b249029db199cec8c9d478b9a98c529f91ad0979ce603a33ad546676fc684bfa",
+    "backend/stillhere/integration.py": "35b5d24b6f970b7db0c4b91db628863d543cdb0ccc0b9bb5579a55d1e229f96a",
+    "backend/stillhere/commands.py": "5d2870b34c5c7543eb01adf302d850362a95707df639781f34deeba71e66e7cb",
+    "backend/stillhere/server.py": "daf0f5373f2321fc29e3870a5f9d7488bddd933706eb71e021c4326d9bf847a8",
+    "backend/stillhere/agent/runtime.py": "2d843c9596cb8c879d1d41232da5521679fbfc543a0e0cc6e75a0bf4b67d4698",
+    "backend/stillhere/agent/config.py": "1e7d7eda3668325c38f34ec1f79227a2b139a25df9c90a5cbaffcddfc66d1b89",
+    "backend/stillhere/agent/tools.py": "10e01510c4c5b414ab2636246e617a4ed77968c94255020aec58ee7e8bbd1a5e",
+    "backend/stillhere/agent/provider.py": "5553c2a7e2e8ff4ec7943c42d05da2c01e3d5a4e75a1182d6a13eceb54168121",
+    "backend/stillhere/worker.py": "0d7444ca92be2edb97faedf5d8505451a2ba744fa81da4688f3d7bbf2c647587",
+    "backend/stillhere/planner/service.py": "c9c209e7229f5635fca4a43b5592bf3325696c1286d1631cd1c3f60504394f1e",
+    "backend/stillhere/planner/plans.py": "2c852da1537dba729a305ec29a8d6ee11138719b2afd8a5374bd586d78c066d4",
+    "backend/stillhere/planner/dependencies.py": "647cfe4fba31e3710e84351299ffcd9b5dee9d87f9dadda64feb422eca55f2a2",
+    "backend/stillhere/planner/costs.py": "ef92d13e776862285400942f77bc4b5a83a7bbddb9a0a4254c0ea767ab2eeaac",
+    "backend/stillhere/applications/domain.py": "99ffcf873f5920a16ae47330ca936da7d3133db48bb5ddf052a3a3b4968af171",
+    "backend/stillhere/finance/forecast.py": "42bf8a26da345dcf04e92afb251480d1f25f786d3e3b05c0e10db8d2d86d23ff",
+    "backend/stillhere/finance/updates.py": "bb4006a5c87b6cf2bdfe4440f5f7ad3357b4f9b09d960d85d3337fc75b5cf806",
+    "backend/stillhere/finance/scenarios.py": "6c9b073087c8ab8d79b82f726aa1554ad1e5c4c9029a14ac041313e94ed7164a",
+    "backend/stillhere/outputs/dashboard.py": "9c7e6615010278c1bfea34d46037d0783107981110ef8a40ef7728004fed9562",
+    "backend/stillhere/outputs/replies.py": "1d08ccdd41900a2a5439532f5051f872305fec32c5b544d0a902255df53aa203",
+    "backend/stillhere/boundaries/costs.py": "e02001d5b8a20393fbaed608d464e61c2af0e3aa6f360de6d1994ac072588bc0",
+    "backend/stillhere/boundaries/applications.py": "f4988e3ac90c07477913611f479d9c68aa7d3b4a62435e9f85db0f32c05a30e9",
+    "backend/stillhere/boundaries/planning.py": "c07d480cc32be84bcfe3b8c2f0179822cdf8ddc9e31f6c40f7d4c53cf9809308",
+    "backend/stillhere/boundaries/trusted.py": "d46e77ceaf5256ff91f7f425a0f3536a9ed3efbd0ae00d87444f204938ec2a53",
+    "backend/stillhere/agent_extensions/adapters.py": "3a29fa66068e7750998e349958ef7b4043d6067959cbaf69577cd9872869686c",
+    "backend/stillhere/agent_extensions/replies.py": "ddffae699ce7c376b990aff3e0e609ee12ca7c71b52f02dc428da1dd7bc5624d",
+    "backend/stillhere/agent_extensions/registry.py": "e52cc5e7a086857a59f85422c0db5f3fc2a6dbc7e39096f98735ee64a8e2e778",
+    "contracts/case-service.schema.json": "1f84b8f32cff1107dd7f03e6a0e27e059d66d932a7a94293b4157104d15aa191"
+  },
+  "source_digests_after": {
+    "backend/stillhere/service.py": "b249029db199cec8c9d478b9a98c529f91ad0979ce603a33ad546676fc684bfa",
+    "backend/stillhere/integration.py": "35b5d24b6f970b7db0c4b91db628863d543cdb0ccc0b9bb5579a55d1e229f96a",
+    "backend/stillhere/commands.py": "5d2870b34c5c7543eb01adf302d850362a95707df639781f34deeba71e66e7cb",
+    "backend/stillhere/server.py": "daf0f5373f2321fc29e3870a5f9d7488bddd933706eb71e021c4326d9bf847a8",
+    "backend/stillhere/agent/runtime.py": "2d843c9596cb8c879d1d41232da5521679fbfc543a0e0cc6e75a0bf4b67d4698",
+    "backend/stillhere/agent/config.py": "1e7d7eda3668325c38f34ec1f79227a2b139a25df9c90a5cbaffcddfc66d1b89",
+    "backend/stillhere/agent/tools.py": "10e01510c4c5b414ab2636246e617a4ed77968c94255020aec58ee7e8bbd1a5e",
+    "backend/stillhere/agent/provider.py": "5553c2a7e2e8ff4ec7943c42d05da2c01e3d5a4e75a1182d6a13eceb54168121",
+    "backend/stillhere/worker.py": "0d7444ca92be2edb97faedf5d8505451a2ba744fa81da4688f3d7bbf2c647587",
+    "backend/stillhere/planner/service.py": "c9c209e7229f5635fca4a43b5592bf3325696c1286d1631cd1c3f60504394f1e",
+    "backend/stillhere/planner/plans.py": "2c852da1537dba729a305ec29a8d6ee11138719b2afd8a5374bd586d78c066d4",
+    "backend/stillhere/planner/dependencies.py": "647cfe4fba31e3710e84351299ffcd9b5dee9d87f9dadda64feb422eca55f2a2",
+    "backend/stillhere/planner/costs.py": "ef92d13e776862285400942f77bc4b5a83a7bbddb9a0a4254c0ea767ab2eeaac",
+    "backend/stillhere/applications/domain.py": "99ffcf873f5920a16ae47330ca936da7d3133db48bb5ddf052a3a3b4968af171",
+    "backend/stillhere/finance/forecast.py": "42bf8a26da345dcf04e92afb251480d1f25f786d3e3b05c0e10db8d2d86d23ff",
+    "backend/stillhere/finance/updates.py": "bb4006a5c87b6cf2bdfe4440f5f7ad3357b4f9b09d960d85d3337fc75b5cf806",
+    "backend/stillhere/finance/scenarios.py": "6c9b073087c8ab8d79b82f726aa1554ad1e5c4c9029a14ac041313e94ed7164a",
+    "backend/stillhere/outputs/dashboard.py": "9c7e6615010278c1bfea34d46037d0783107981110ef8a40ef7728004fed9562",
+    "backend/stillhere/outputs/replies.py": "1d08ccdd41900a2a5439532f5051f872305fec32c5b544d0a902255df53aa203",
+    "backend/stillhere/boundaries/costs.py": "e02001d5b8a20393fbaed608d464e61c2af0e3aa6f360de6d1994ac072588bc0",
+    "backend/stillhere/boundaries/applications.py": "f4988e3ac90c07477913611f479d9c68aa7d3b4a62435e9f85db0f32c05a30e9",
+    "backend/stillhere/boundaries/planning.py": "c07d480cc32be84bcfe3b8c2f0179822cdf8ddc9e31f6c40f7d4c53cf9809308",
+    "backend/stillhere/boundaries/trusted.py": "d46e77ceaf5256ff91f7f425a0f3536a9ed3efbd0ae00d87444f204938ec2a53",
+    "backend/stillhere/agent_extensions/adapters.py": "3a29fa66068e7750998e349958ef7b4043d6067959cbaf69577cd9872869686c",
+    "backend/stillhere/agent_extensions/replies.py": "ddffae699ce7c376b990aff3e0e609ee12ca7c71b52f02dc428da1dd7bc5624d",
+    "backend/stillhere/agent_extensions/registry.py": "e52cc5e7a086857a59f85422c0db5f3fc2a6dbc7e39096f98735ee64a8e2e778",
+    "contracts/case-service.schema.json": "1f84b8f32cff1107dd7f03e6a0e27e059d66d932a7a94293b4157104d15aa191"
+  },
+  "checkout_changed_during_run": false,
+  "slice_evidence_only": true,
+  "full_mvp_readiness": "not_established",
+  "live_verification": "pending_user_run",
+  "results": [
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FamilyJourneyTests.test_all_four_canonical_finance_scenarios_through_commands",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FamilyJourneyTests.test_application_stage_and_correspondence_do_not_create_money_or_agency_outcome",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FamilyJourneyTests.test_complete_synthetic_family_journey_uses_persisted_records",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FamilyJourneyTests.test_no_car_replanning_preserves_completed_work_and_unrelated_program",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FamilyJourneyTests.test_skipped_intake_and_distinct_locations_do_not_share_location",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_changed_payload_event_reuse_and_cross_household_replay_are_rejected",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_compact_result_limit_prevents_derived_publication",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_expired_lease_and_deadline_cannot_publish",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_finance_failure_after_tentative_write_rolls_back_event_ledger_forecast_audit",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_interrupted_agent_expiration_preserves_writes_and_revokes_old_run",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_lost_response_replay_after_restart_applies_spending_once",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_provider_failure_after_write_retains_effect_and_replay_does_not_invoke_provider",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_stale_derived_result_after_user_write_cannot_overwrite_new_inputs",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_two_sqlite_writers_race_one_wins_one_visible_conflict",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.TransactionTests.test_worker_failure_rolls_back_private_state_effects_snapshot_and_audit",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FinanceIntegrityTests.test_ambiguous_match_requires_clarification_without_ledger_or_forecast_write",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FinanceIntegrityTests.test_finance_gap_marks_plan_pending_and_preserves_completion",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FinanceIntegrityTests.test_restricted_funds_and_overlapping_support_do_not_cover_incompatible_costs_twice",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FinanceIntegrityTests.test_transfer_changes_location_of_money_without_income_or_double_forecast_effect",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FinanceIntegrityTests.test_unknown_is_incomplete_and_boolean_money_is_rejected",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.FinanceIntegrityTests.test_unreceived_approved_denied_delayed_aid_is_not_accessible_cash",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_check_later_reschedules_once_and_model_cannot_enroll_or_share",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_independent_worker_sigkill_then_restart_has_one_durable_effect_set",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_location_expiry_and_assigned_handler_policy_never_claim_current_destination",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_missed_activity_without_enrollment_does_not_create_follow_up_and_help_is_immediate",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_operator_replay_requires_same_actor_and_another_operator_cannot_steal_assignment",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_pause_prevents_future_attempts_and_location_clear_removes_projection",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_reminder_overdue_acknowledgment_late_reply_attempt_and_outcome",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_scoped_read_only_operator_minimal_projection_revocation_and_household_isolation",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_two_independent_worker_processes_do_not_duplicate_effects",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.CheckInOperatorTests.test_worker_sigkill_during_real_transaction_rolls_back_and_restart_catches_up_once",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.OutputAndBudgetTests.test_dashboard_reference_allowlist_replay_and_rejection_preserve_previous_components",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.OutputAndBudgetTests.test_per_case_agent_claim_is_exclusive_across_service_instances",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.OutputAndBudgetTests.test_tool_budget_is_terminal_and_late_calls_do_not_write",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.SourceAcceptanceTests.test_no_matching_declaration_keeps_nonfederal_referrals_and_unknown_eligibility",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.SourceAcceptanceTests.test_resource_failure_retains_previous_referrals_and_fact_changes_mark_them_stale",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.SourceAcceptanceTests.test_source_failure_is_unavailable_with_official_fallback_not_no_match",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.ProposalBoundaryTests.test_application_report_only_proposal_and_invalidation_preserve_stage_money_and_case",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.ProposalBoundaryTests.test_dated_null_action_cost_proposal_keeps_baseline_and_essentials_and_makes_scenario_incomplete",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.ProposalBoundaryTests.test_unknown_cost_date_suppresses_entire_executable_proposal",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_completion_correction_is_auditable_durable_and_replay_safe",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_dashboard_metadata_recomputes_source_expiry_on_authorized_read",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_expired_agent_run_is_visible_on_resume_after_process_restart",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_explicit_finance_recalculation_accepts_current_inputs",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_fact_correction_invalidates_application_preparation_preserving_stage",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_forged_choice_without_persisted_question_is_rejected",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_household_finance_cannot_mint_backend_planner_ownership",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_new_finance_adapter_chat_control_parity_requires_real_case_service",
+      "status": "blocking",
+      "exception_type": "AgentFailure"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_operator_read_is_access_audited_with_minimal_metadata",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_reported_application_status_saves_while_rules_are_unavailable",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_same_fact_report_does_not_leave_replay_plan_permanently_stale",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_structured_answer_replay_forged_multichoice_stale_and_skip_behavior",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RequiredIntegrationGates.test_structured_reply_persists_two_skippable_questions",
+      "status": "blocking",
+      "exception_type": "AssertionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.OfflineHandlerTests.test_adapter_finance_resume_replay_conflict_scope_and_operator_authority",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.OfflineHandlerTests.test_adapter_simulated_operator_projection_and_revocation",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.OfflineHandlerTests.test_adapter_strict_json_body_and_version_headers",
+      "status": "verified"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RealHTTPTests.test_adapter_finance_resume_replay_conflict_scope_and_operator_authority",
+      "status": "blocked_http",
+      "exception_type": "PermissionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RealHTTPTests.test_adapter_simulated_operator_projection_and_revocation",
+      "status": "blocked_http",
+      "exception_type": "PermissionError"
+    },
+    {
+      "test": "tests.test_mvp_acceptance_parallel.RealHTTPTests.test_adapter_strict_json_body_and_version_headers",
+      "status": "blocked_http",
+      "exception_type": "PermissionError"
+    }
+  ]
+}

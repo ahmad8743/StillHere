@@ -1,0 +1,15 @@
+[Unit]
+Description=StillHere IP TLS renewal and Caddy reload
+After=caddy.service network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/stillhere/current/deploy/tls_renew.py
+UMask=0077
+TimeoutStartSec=15min
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
+LimitCORE=0
+StandardOutput=journal
+StandardError=journal

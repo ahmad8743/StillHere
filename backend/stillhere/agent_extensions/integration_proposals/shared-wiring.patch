@@ -1,0 +1,346 @@
+--- a/backend/stillhere/agent/registry.py
++++ b/backend/stillhere/agent/registry.py
+@@ -72,6 +72,12 @@
+         if len(self.by_name) != len(self.definitions):
+             raise ValueError("Duplicate tool name.")
+ 
++    def validate_arguments(self, name, arguments):
++        definition = self.by_name.get(name)
++        if definition is None:
++            raise InvalidInput("$", "Tool is outside the household allowlist.")
++        validate(definition.arguments_schema, arguments)
++
+     def invoke(self, name, arguments, context):
+         # Also serializes SDK parallel tool calls if a future provider requests them.
+         with context.lock:
+--- a/backend/stillhere/agent/provider.py
++++ b/backend/stillhere/agent/provider.py
+@@ -113,7 +113,7 @@
+                                  "user_message": user_text})
+         if len(prompt) > self.config.max_context_chars:
+             raise AgentFailure("agent_context_limit", "Case context exceeds the configured limit; accepted data remains saved.")
+-        agent = Agent(model=model, system_prompt=SYSTEM_PROMPT, tools=registry.strands_tools(),
++        agent = Agent(model=model, system_prompt=SYSTEM_PROMPT + EXTENSION_PROMPT, tools=registry.strands_tools(),
+                       callback_handler=None, tool_executor=SequentialToolExecutor(),
+                       retry_strategy=None,  # Botocore owns the only bounded provider retry policy.
+                       conversation_manager=SlidingWindowConversationManager(window_size=20, per_turn=True),
+@@ -128,7 +128,7 @@
+             try:
+                 if definition is None:
+                     raise InvalidInput("$", "Tool is outside the allowlist.")
+-                validate(definition.arguments_schema, event.tool_use["input"])
++                registry.validate_arguments(event.tool_use["name"], event.tool_use["input"])
+             except InvalidInput:
+                 with context.lock:
+                     context.check_budget()
+@@ -163,3 +163,16 @@
+         if not text or len(text) > 8000:
+             raise AgentFailure("invalid_agent_reply", "The agent did not return a valid bounded reply.")
+         return text
++
++
++EXTENSION_PROMPT = """
++Use household extensions only for explicit user requests. CaseService owns calculations,
++reconciliation and writes. Inspect applied/already_applied and saved versions before
++claiming a result. Scenario money is hypothetical; approval is not received money.
++Enrollment and location sharing remain direct controls. Never provision an operator,
++assign authority or send welfare outreach. A help request requires a matching consented
++direct-control payload already saved on this exact turn. Questions grant no authority.
++If structured replies are enabled, call prepare_structured_reply last with grounded
++plain text and optional questions, after all domain changes; preserve unknowns and
++source attribution. Never claim an uncalled tool, unsuccessful write or live delivery.
++"""
+--- a/backend/stillhere/integration.py
++++ b/backend/stillhere/integration.py
+@@ -108,7 +108,7 @@
+         validate("C08ForecastBundle", forecasts)
+         published = prepare_forecast_publication(forecasts, current_case_version=version, computed_at=now, publication_event_id=event_id)
+         validate("C08CurrentFinance", published["proposed_finance"])
+-        reassessment = finance_reassessment(prior if prior.get("baseline") else None, forecasts, changed_record_ids=changed_ids)
++        reassessment = finance_reassessment(prior if prior.get("baseline") else None, forecasts, changed_record_ids=list(changed_ids))
+         validate("C08FinanceReassessment", reassessment)
+         snapshot["finance"] = {**published["proposed_finance"], "ledger": snapshot["finance"]["ledger"], "reassessment": reassessment}
+         if reassessment["required"] and snapshot["plan"]["state"] != "not_requested":
+@@ -315,7 +315,7 @@
+                     snapshot["dashboard_output"] = {key: proposed[key] for key in ("input_case_version", "prepared_at", "component_states")}
+                 elif operation == "finance.calculate":
+                     validate("ForecastToolArguments", arguments)
+-                    self._refresh_finance(snapshot, now, event_id, start_date=arguments.get("start_date"))
++                    self._refresh_finance(snapshot, now, event_id, start_date=arguments.get("start_date"), input_version=snapshot["case_version"]+1)
+                 else:
+                     raise ServiceError(400, "tool_forbidden", "Derived operation is outside the household allowlist.")
+                 # Check compact output before committing any effect.
+--- a/backend/stillhere/agent/config.py
++++ b/backend/stillhere/agent/config.py
+@@ -35,6 +35,7 @@
+     enable_planner: bool = False
+     enable_plan_revision: bool = False
+     enable_tasks: bool = False
++    extensions: object = None
+ 
+     def __post_init__(self):
+         for key in ("max_turns", "max_tool_calls", "max_output_tokens", "max_total_tokens", "timeout_seconds", "history_turns", "max_context_chars"):
+@@ -50,7 +51,8 @@
+ 
+     @classmethod
+     def from_environment(cls):
+-        settings = {}
++        from ..agent_extensions import ExtensionConfig
++        settings = {"extensions": ExtensionConfig.from_environment(os.environ)}
+         for name in ("max_turns", "max_tool_calls", "max_output_tokens", "max_total_tokens", "timeout_seconds", "history_turns", "max_context_chars"):
+             value = os.environ.get("STILLHERE_AGENT_" + name.upper())
+             if value:
+--- a/backend/stillhere/agent/runtime.py
++++ b/backend/stillhere/agent/runtime.py
+@@ -29,6 +29,13 @@
+                                                + ((TASK_TOOL,) if self.config.enable_tasks else ())
+                                                + ((OFFICIAL_TOOL,) if self.config.enable_official_sources or self.config.enable_rule_review else ())
+                                                + ((CANDIDATE_TOOL, DISCREPANCY_TOOL) if self.config.enable_rule_review else ()))
++        from ..agent_extensions import ExtensionConfig, create_registry
++        from ..agent_extensions.provider import ExtensionProvider
++        flags = self.config.extensions or ExtensionConfig()
++        if any(vars(flags).values()):
++            self.registry = create_registry(self.registry, flags)
++        if flags.structured_replies:
++            self.provider = ExtensionProvider(self.provider)
+         if self.config.enable_incidents and incident_facade is None:
+             from ..incidents import IncidentFacade
+             incident_facade = IncidentFacade()
+@@ -84,8 +91,10 @@
+                 text = self.provider.reply(scoped, history, command["payload"]["text"], context, self.registry)
+                 if context.terminal_issue:
+                     raise AgentFailure(context.terminal_issue["code"], context.terminal_issue["message"])
+-                if not isinstance(text, str) or not text.strip() or len(text) > 8000:
+-                    raise AgentFailure("invalid_agent_reply", "The agent did not return a valid bounded reply.")
++                from ..agent_extensions import ExtensionConfig, normalize_reply
++                if not isinstance(text, str) and not (self.config.extensions or ExtensionConfig()).structured_replies:
++                    raise AgentFailure("invalid_agent_reply", "Structured replies are not enabled.")
++                normalize_reply(self.service.read_case(token, case_id), text, now=self.service.clock())
+                 outcome.put((text, None))
+             except AgentFailure as error:
+                 record(self.diagnostics, "provider_failed", code=error.issue["code"])
+@@ -105,7 +114,7 @@
+         # Revokes all later registry calls even when the provider remains blocked in a socket.
+         with context.lock:
+             context.deadline = 0
+-        snapshot = self.service.finish_agent_turn(token, case_id, event_id, claim["run_id"], text, issue)
++        snapshot = self.service.finish_agent_turn(token, case_id, event_id, claim["run_id"], text if isinstance(text, str) else "", issue, reply=text if isinstance(text, dict) else None)
+         turn = next(t for t in snapshot["conversation"]["turns"] if t["role"] == "assistant" and t.get("event_id") == event_id)
+         record(self.diagnostics, "run_complete" if turn["state"] == "complete" else "run_failed",
+                code=turn.get("issue", {}).get("code"))
+--- a/backend/stillhere/service.py
++++ b/backend/stillhere/service.py
+@@ -5,6 +5,7 @@
+ import os
+ import secrets
+ import sqlite3
++import time
+ from contextlib import contextmanager
+ from datetime import datetime, timedelta
+ from pathlib import Path
+@@ -246,6 +247,9 @@
+             or any(turn["id"] == command["payload"]["message_id"] for turn in snapshot["conversation"]["turns"])
+         ):
+             raise ServiceError(400, "message_id_reused", "Changed or repeated message identity requires the original event_id.")
++        if command["type"] == "conversation.message":
++            from .agent_extensions import correlate_answer
++            correlate_answer(snapshot, command["payload"])
+         before_case = canonical_json(snapshot)
+         before = snapshot["facts"].get(command["payload"]["fact_key"]) if command["type"] == "fact.correct" else None
+         if command["type"] in SERVICE_COMMANDS:
+@@ -349,7 +353,56 @@
+         except (InvalidInput, ServiceError, sqlite3.Error) as error:
+             return self._failed(child_id, now, error)
+ 
+-    def finish_agent_turn(self, token, case_id, event_id, run_id, text="", issue=None):
++    def execute_agent_extension_command(self, token, case_id, parent_event_id, run_id,
++                                        command_type, arguments, expected_version,
++                                        deadline, max_result_chars=48000):
++        """Reviewed household-only writes; lease, bounds and commit are atomic."""
++        from .agent_extensions.adapters import COMMANDS, child_event_id
++        from .agent_extensions.schema import bounded
++        child_id = "agent_tool_invalid_input"
++        now = self.clock()
++        try:
++            with self._transaction() as connection:
++                now = self.clock()
++                owner = self._session(connection, token)
++                self._snapshot(connection, owner, case_id)
++                self._active_run(connection, case_id, parent_event_id, run_id, now)
++                if command_type not in COMMANDS:
++                    raise ServiceError(403, "tool_forbidden", "Operation is outside the household extension allowlist.")
++                if time.monotonic() >= deadline:
++                    raise ServiceError(409, "agent_timeout", "Late extension work cannot commit.")
++                bounded(arguments, 16000)
++                child_id = child_event_id(case_id, parent_event_id, command_type, arguments)
++                parent = json.loads(connection.execute(
++                    "SELECT command_json FROM events WHERE case_id=? AND event_id=?",
++                    (case_id, parent_event_id)).fetchone()["command_json"])
++                payload = arguments
++                if command_type == "help.request":
++                    # Only the exact authenticated direct-control request attests consent.
++                    # No Boolean, role, prompt text or model output can grant this scope.
++                    validate("HelpRequestPayload", {**arguments, "consent": True})
++                    attested = parent["payload"].get("help_request")
++                    if "consent" in arguments or attested != {**arguments, "consent": True}:
++                        raise ServiceError(403, "explicit_help_consent_required", "Submit this exact help request through an authenticated direct control.")
++                    payload = attested
++                command = {"contract_version": VERSION, "case_id": case_id,
++                           "event_id": child_id, "expected_case_version": expected_version,
++                           "occurred_at": parent["occurred_at"], "channel": "chat",
++                           "type": command_type, "payload": payload}
++                result = self._execute(connection, owner, command, child_id, now)
++                compact = self.domain_summary(result, command_type)
++                try:
++                    bounded(compact, max_result_chars)
++                except InvalidInput:
++                    raise ServiceError(400, "agent_context_limit", "Extension output exceeds its bound; no new effect was saved.") from None
++                self._active_run(connection, case_id, parent_event_id, run_id, self.clock())
++                if time.monotonic() >= deadline:
++                    raise ServiceError(409, "agent_timeout", "Late extension work cannot commit.")
++                return result
++        except (InvalidInput, ServiceError, sqlite3.Error) as error:
++            return self._failed(child_id, now, error)
++
++    def finish_agent_turn(self, token, case_id, event_id, run_id, text="", issue=None, *, reply=None):
+         now = self.clock()
+         try:
+             with self._transaction() as connection:
+@@ -365,6 +418,17 @@
+                 if turn is None or turn["state"] != "running":
+                     return snapshot
+                 self._active_run(connection, case_id, event_id, run_id, now, allow_expired=issue is not None)
++                if reply is not None and issue is None:
++                    from .agent_extensions import normalize_reply
++                    from .outputs.validation import OutputValidationError
++                    try:
++                        normalized = normalize_reply(snapshot, reply, now=now)
++                        text = normalized["text"]
++                        turn["questions"] = normalized["questions"]
++                    except (InvalidInput, OutputValidationError):
++                        text = ""
++                        turn.pop("questions", None)
++                        issue = {"code": "invalid_structured_reply", "message": "The structured reply is invalid or stale; accepted changes remain saved.", "retryable": False}
+                 state = "failed" if issue else "complete"
+                 self._save_agent_state(connection, snapshot, turn, state, now, text, issue)
+                 connection.execute("UPDATE agent_runs SET state=? WHERE case_id=? AND event_id=?", (state, case_id, event_id))
+--- a/backend/stillhere/commands.py
++++ b/backend/stillhere/commands.py
+@@ -96,6 +96,9 @@
+ 
+ def validate_payload(command_type, payload):
+     validate(COMMAND_HANDLERS[command_type][0], payload)
++    if command_type == "finance.update":
++        from .agent_extensions.validation import validate_household_financial_input
++        validate_household_financial_input(payload)
+ 
+ 
+ def apply_command(snapshot, command, received_at):
+@@ -106,6 +109,9 @@
+     else:
+         COMMAND_HANDLERS[command["type"]][1](updated, command["payload"], command["occurred_at"])
+     if command["type"] == "conversation.message":
++        for key in ("reply_to_turn_id", "question_id", "choice_ids", "skipped"):
++            if key in command["payload"]:
++                updated["conversation"]["turns"][-1][key] = copy.deepcopy(command["payload"][key])
+         if "choice_id" in command["payload"]:
+             updated["conversation"]["turns"][-1]["choice_id"] = command["payload"]["choice_id"]
+         updated["conversation"]["turns"].append({
+--- a/contracts/case-service.schema.json
++++ b/contracts/case-service.schema.json
+@@ -1033,7 +1033,40 @@
+         },
+         "choice_id": {
+           "$ref": "#/$defs/Id"
+-        }
++        },
++        "reply_to_turn_id": {
++          "type": "string",
++          "minLength": 1,
++          "maxLength": 128
++        },
++        "question_id": {
++          "type": "string",
++          "minLength": 1,
++          "maxLength": 128
++        },
++        "choice_ids": {
++          "type": "array",
++          "minItems": 1,
++          "maxItems": 6,
++          "uniqueItems": true,
++          "items": {
++            "type": "string",
++            "minLength": 1,
++            "maxLength": 128
++          }
++        },
++        "skipped": {
++          "type": "boolean"
++        },
++        "help_request": {
++          "$ref": "#/$defs/HelpRequestPayload"
++        }
++      },
++      "not": {
++        "required": [
++          "choice_id",
++          "choice_ids"
++        ]
+       }
+     },
+     "ConversationTurn": {
+@@ -1086,6 +1119,30 @@
+           "items": {
+             "$ref": "#/$defs/OutputFollowUpQuestion"
+           }
++        },
++        "reply_to_turn_id": {
++          "type": "string",
++          "minLength": 1,
++          "maxLength": 128
++        },
++        "question_id": {
++          "type": "string",
++          "minLength": 1,
++          "maxLength": 128
++        },
++        "choice_ids": {
++          "type": "array",
++          "minItems": 1,
++          "maxItems": 6,
++          "uniqueItems": true,
++          "items": {
++            "type": "string",
++            "minLength": 1,
++            "maxLength": 128
++          }
++        },
++        "skipped": {
++          "type": "boolean"
+         }
+       }
+     },
+--- a/backend/stillhere/agent/smoke.py
++++ b/backend/stillhere/agent/smoke.py
+@@ -43,6 +43,7 @@
+ 
+ def main():
+     parser = argparse.ArgumentParser(description="Live Strands/Bedrock synthetic tool proof")
++    parser.add_argument("--extensions", choices=("finance", "applications", "outputs", "no-car"), help="Delegate strict new-tool proof to agent_extensions.live_smoke")
+     parser.add_argument("--env-file", help="Explicit optional local configuration file")
+     parser.add_argument("--log-file", default="var/agent-smoke.jsonl", help="Safe phase/error-code log (default: var/agent-smoke.jsonl)")
+     modes = parser.add_mutually_exclusive_group()
+@@ -56,6 +57,12 @@
+     modes.add_argument("--plan", action="store_true", help="C05 saved plan, user-reported task completion, preserving revision and replay proof")
+     parser.add_argument("--expected-account-id", help="With --check-access, privately compare the 12-digit console account ID; never prints or logs it")
+     args = parser.parse_args()
++    if args.extensions:
++        from ..agent_extensions.live_smoke import main as extension_main
++        extension_arguments = ["--mode", args.extensions, "--run-live"]
++        if args.env_file:
++            extension_arguments += ["--env-file", args.env_file]
++        return extension_main(extension_arguments)
+     if args.expected_account_id is not None and (not args.check_access or not re.fullmatch(r"[0-9]{12}", args.expected_account_id)):
+         parser.error("--expected-account-id requires --check-access and a 12-digit account ID.")
+     diagnostics = SafeDiagnostics(args.log_file)

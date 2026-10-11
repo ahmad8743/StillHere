@@ -69,11 +69,29 @@ def _conversation_message(snapshot, payload, occurred_at):
     })
 
 
+def _task_update(snapshot, payload, occurred_at, received_at=None, event_id=None):
+    from .planner.tasks import record_task
+    record_task(snapshot, payload, occurred_at, received_at, event_id)
+
+
 COMMAND_HANDLERS = {
     "fact.correct": ("FactCorrectionPayload", _correct_fact),
     "intake.submit": ("IntakeSelections", _apply_intake),
     "conversation.message": ("ConversationMessagePayload", _conversation_message),
+    "task.update": ("TaskUpdatePayload", _task_update),
 }
+
+# These handlers need trusted session/time and shared transaction context.
+# CaseService dispatches them; they never run as free-standing snapshot writes.
+SERVICE_COMMANDS = {
+    "finance.update": "FinanceUpdatePayload", "scenario.set": "ScenarioSetPayload",
+    "application.update": "UpdateApplicationArguments",
+    "check_in.enroll": "CheckInEnrollPayload", "check_in.reply": "CheckInReplyPayload",
+    "check_in.pause": "CheckInPausePayload", "help.request": "HelpRequestPayload",
+    "location.share": "LocationSharePayload", "location.clear": "LocationClearPayload",
+    "follow_up.acknowledge": "FollowUpAcknowledgePayload", "follow_up.record": "FollowUpRecordPayload",
+}
+COMMAND_HANDLERS.update({name: (schema, None) for name, schema in SERVICE_COMMANDS.items()})
 
 
 def validate_payload(command_type, payload):
@@ -83,7 +101,10 @@ def validate_payload(command_type, payload):
 def apply_command(snapshot, command, received_at):
     """Apply an already validated command to a copy, preserving the prior audit state."""
     updated = copy.deepcopy(snapshot)
-    COMMAND_HANDLERS[command["type"]][1](updated, command["payload"], command["occurred_at"])
+    if command["type"] == "task.update":
+        _task_update(updated, command["payload"], command["occurred_at"], received_at, command["event_id"])
+    else:
+        COMMAND_HANDLERS[command["type"]][1](updated, command["payload"], command["occurred_at"])
     if command["type"] == "conversation.message":
         if "choice_id" in command["payload"]:
             updated["conversation"]["turns"][-1]["choice_id"] = command["payload"]["choice_id"]
@@ -118,6 +139,10 @@ def apply_command(snapshot, command, received_at):
     if command["type"] != "conversation.message" and updated["plan"]["state"] != "not_requested":
         updated["plan"]["state"] = "pending"
         updated["plan"]["pending_input_case_version"] = updated["case_version"]
+        if command["type"] in ("fact.correct", "intake.submit"):
+            for action in updated["plan"]["actions"]:
+                if action.get("origin") == "recovery_planner":
+                    action["input_freshness"] = "stale"
     if updated["finance"]["state"] == "not_calculated":
         updated["finance"]["input_case_version"] = updated["case_version"]
     elif command["type"] != "conversation.message":

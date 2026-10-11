@@ -1,0 +1,433 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stillhere:parallel:outputs:0.1",
+  "$comment": "Proposed independent output slice; not merged into CaseSnapshot/ConversationTurn. Validate a named $defs entry. Runtime additionally enforces kind/reference relationships, sorted unique orders/IDs, plain text, question cardinality, bounded JSON and freshness/version checks. Prepared outputs have no durable effect or authority.",
+  "$defs": {
+    "Id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[^\\s<>`\\x00-\\x1f\\x7f-\\x9f]+$"
+    },
+    "Instant": {
+      "type": "string",
+      "maxLength": 40,
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,6})?(Z|\\+00:00)$"
+    },
+    "Version": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807
+    },
+    "Freshness": {
+      "enum": [
+        "current",
+        "stale",
+        "unknown"
+      ]
+    },
+    "DisplayState": {
+      "enum": [
+        "unknown",
+        "available",
+        "no_match",
+        "unavailable",
+        "not_requested",
+        "not_calculated",
+        "pending",
+        "provisional",
+        "complete",
+        "incomplete",
+        "current",
+        "stale",
+        "ready",
+        "blocked",
+        "waiting",
+        "completed",
+        "skipped",
+        "covered",
+        "uncovered",
+        "missing",
+        "user_reported",
+        "source_supported",
+        "conflicting",
+        "proposed",
+        "confirmed",
+        "hypothetical",
+        "received",
+        "unreceived",
+        "not_enrolled",
+        "scheduled",
+        "due",
+        "reminder_attempted",
+        "overdue",
+        "answered",
+        "paused",
+        "canceled",
+        "requested",
+        "assigned_acknowledged",
+        "contact_attempted",
+        "outcome_recorded"
+      ]
+    },
+    "SnapshotIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "case_id",
+        "case_version"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "case_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "case_version": {
+          "$ref": "#/$defs/Version"
+        }
+      }
+    },
+    "DashboardDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "record_ids",
+        "display_order"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "urgent_resource",
+            "next_step",
+            "task_list",
+            "blocker_controls",
+            "evidence_checklist",
+            "aid_tracker",
+            "finance_overview",
+            "scenario_comparison",
+            "check_in",
+            "source_details"
+          ]
+        },
+        "record_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "minItems": 0,
+          "maxItems": 24,
+          "uniqueItems": true
+        },
+        "display_order": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1023
+        }
+      }
+    },
+    "PublishDashboardArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "components"
+      ],
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardDescriptor"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        }
+      }
+    },
+    "RecordDisplayState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "freshness",
+        "state",
+        "availability",
+        "data_mode"
+      ],
+      "properties": {
+        "record_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "freshness": {
+          "$ref": "#/$defs/Freshness"
+        },
+        "state": {
+          "$ref": "#/$defs/DisplayState"
+        },
+        "availability": {
+          "enum": [
+            "confirmed_available",
+            "confirmed_unavailable",
+            "unknown",
+            null
+          ]
+        },
+        "data_mode": {
+          "enum": [
+            "live",
+            "cached",
+            "seeded",
+            "sandbox",
+            null
+          ]
+        }
+      }
+    },
+    "ComponentDisplayState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_id",
+        "freshness",
+        "state",
+        "record_states"
+      ],
+      "properties": {
+        "component_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "freshness": {
+          "$ref": "#/$defs/Freshness"
+        },
+        "state": {
+          "$ref": "#/$defs/DisplayState"
+        },
+        "record_states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RecordDisplayState"
+          },
+          "minItems": 0,
+          "maxItems": 24
+        }
+      }
+    },
+    "DashboardPublication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "status",
+        "case_id",
+        "input_case_version",
+        "prepared_at",
+        "components",
+        "component_states"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "status": {
+          "enum": [
+            "prepared"
+          ]
+        },
+        "case_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "prepared_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DashboardDescriptor"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        },
+        "component_states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ComponentDisplayState"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        }
+      }
+    },
+    "FollowUpChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160,
+          "pattern": "^[^<>`]*\\S[^<>`]*$"
+        }
+      }
+    },
+    "FollowUpQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "prompt",
+        "kind",
+        "choices",
+        "allow_skip"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^[^<>`]*\\S[^<>`]*$"
+        },
+        "kind": {
+          "enum": [
+            "text",
+            "single_choice",
+            "multiple_choice"
+          ]
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FollowUpChoice"
+          },
+          "minItems": 0,
+          "maxItems": 6
+        },
+        "allow_skip": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        }
+      }
+    },
+    "StructuredReplyArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000,
+          "pattern": "^[^<>`]*\\S[^<>`]*$"
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FollowUpQuestion"
+          },
+          "minItems": 0,
+          "maxItems": 2
+        }
+      }
+    },
+    "StructuredReplyResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "status",
+        "case_id",
+        "input_case_version",
+        "prepared_at",
+        "text",
+        "questions"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "status": {
+          "enum": [
+            "prepared"
+          ]
+        },
+        "case_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "prepared_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000,
+          "pattern": "^[^<>`]*\\S[^<>`]*$"
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FollowUpQuestion"
+          },
+          "minItems": 0,
+          "maxItems": 2
+        }
+      }
+    },
+    "DashboardOutputMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_case_version",
+        "prepared_at",
+        "component_states"
+      ],
+      "properties": {
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "prepared_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "component_states": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ComponentDisplayState"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        }
+      }
+    }
+  }
+}

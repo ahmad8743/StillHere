@@ -70,6 +70,109 @@ class StrandsIntegrationTests(unittest.TestCase):
                 "expected_case_version": 1, "occurred_at": "2026-10-10T15:00:00Z", "channel": "chat",
                 "type": "conversation.message", "payload": {"message_id": "user_sdk", "text": "I have no car."}}
 
+    def planner_runtime(self, steps):
+        self.service.clock = lambda: "2026-10-11T06:00:00Z"
+        for key, value in (("document_issuing_state", "CO"), ("credential_lost", True),
+                           ("mobility", "no_car"), ("office_transport_available", False), ("internet_access", True)):
+            snapshot = self.service.read_case(self.token, self.case["case_id"])
+            self.service.execute(self.token, {"contract_version": "0.1", "case_id": self.case["case_id"],
+                "event_id": "planner_" + key, "expected_case_version": snapshot["case_version"],
+                "occurred_at": self.service.clock(), "channel": "dashboard", "type": "fact.correct",
+                "payload": {"fact_key": key, "value": value, "observed_at": self.service.clock()}})
+        model = ScriptedModel(steps)
+        config = AgentConfig(enable_planner=True)
+        runtime = AgentRuntime(self.service, config, StrandsBedrockProvider(config, model))
+        command = self.command()
+        command["expected_case_version"] = self.service.read_case(self.token, self.case["case_id"])["case_version"]
+        return runtime, model, command
+
+    def test_sdk_planner_uses_scoped_facts_preserves_domains_sources_and_saved_reply_on_replay(self):
+        from backend.stillhere.agent.smoke import RuleProofRegistry
+        runtime, model, command = self.planner_runtime([
+            {"name": "evaluate_recovery_options", "input": {"program_id": "co_state_id_replacement"}},
+            "Online is provisional; office access blocked. Costs and eligibility unknown."])
+        runtime.registry = RuleProofRegistry(runtime.registry.definitions)
+        before = self.service.read_case(self.token, self.case["case_id"])
+        result = runtime.handle(self.token, command)
+        after = result["case_snapshot"]
+        self.assertEqual(after["conversation"]["turns"][-1]["state"], "complete")
+        planned = runtime.registry.planner_result
+        self.assertEqual(planned["state"], "available")
+        self.assertEqual([o["status"] for o in planned["options"]], ["provisional", "blocked"])
+        for key in ("facts", "needs", "evidence", "resources", "plan", "applications", "sources", "shared_location"):
+            self.assertEqual(after[key], before[key])
+        self.assertEqual(runtime.handle(self.token, command)["case_snapshot"], after)
+        self.assertEqual(runtime.registry.planner_calls, 1)
+        self.assertEqual(model.calls, 2)
+        specs = {spec["name"]: spec["inputSchema"]["json"] for spec in model.specs}
+        self.assertEqual(set(specs), {"read_case", "correct_fact", "evaluate_recovery_options"})
+        self.assertEqual(set(specs["evaluate_recovery_options"]["properties"]), {"program_id", "version"})
+        self.assertNotIn("$ref", json.dumps(specs["evaluate_recovery_options"]))
+        self.assertNotIn(self.token, json.dumps(model.messages))
+
+    def test_sdk_planner_raw_arguments_cannot_supply_facts_scope_costs_or_graph(self):
+        from backend.stillhere.agent.smoke import RuleProofRegistry
+        runtime, model, command = self.planner_runtime([
+            {"name": "evaluate_recovery_options", "input": {"program_id": "co_state_id_replacement", "facts": {"email_access": True}, "cost_cents": 0}},
+            {"name": "evaluate_recovery_options", "input": {"program_id": "co_state_id_replacement", "version": "2026-10-10.1"}},
+            "Explicit backend facts evaluated; household eligibility remains unknown."])
+        runtime.registry = RuleProofRegistry(runtime.registry.definitions)
+        result = runtime.handle(self.token, command)
+        self.assertEqual(result["case_snapshot"]["conversation"]["turns"][-1]["state"], "complete")
+        self.assertEqual(runtime.registry.planner_calls, 1)
+        self.assertEqual(runtime.registry.planner_result["query"]["requested_version"], "2026-10-10.1")
+        self.assertEqual(runtime.registry.planner_result["options"][0]["status"], "provisional")
+
+    def test_sdk_plan_commit_task_completion_and_revision_preserve_work_and_use_bounded_summaries(self):
+        from backend.stillhere.planner.plans import action_id
+        identifier = action_id("co_state_id_replacement", "co_id_online_renewal")
+        runtime, model, command = self.planner_runtime([
+            {"name": "revise_recovery_plan", "input": {"program_id": "co_state_id_replacement"}},
+            {"name": "update_task", "input": {"action_id": identifier, "status": "completed"}},
+            {"name": "revise_recovery_plan", "input": {"program_id": "co_state_id_replacement"}},
+            "Saved plan, preserving reported completion; eligibility and costs remain unknown."])
+        config = AgentConfig(enable_plan_revision=True, enable_tasks=True, max_turns=6)
+        runtime = AgentRuntime(self.service, config, StrandsBedrockProvider(config, model))
+        result = runtime.handle(self.token, command)
+        after = result["case_snapshot"]
+        self.assertEqual(after["conversation"]["turns"][-1]["state"], "complete")
+        self.assertEqual(after["plan"]["actions"][0]["status"], "completed")
+        self.assertEqual(len(after["plan"]["revisions"]), 2)
+        self.assertEqual(after["plan"]["household_eligibility"], "unknown")
+        self.assertEqual(runtime.handle(self.token, command)["case_snapshot"], after)
+        self.assertEqual(model.calls, 4)
+        results = [content["toolResult"] for message in model.messages for content in message["content"] if "toolResult" in content]
+        self.assertEqual(len(results), 3)
+        for tool_result in results:
+            text = json.dumps(tool_result)
+            self.assertIn("plan_summary", text)
+            self.assertNotIn("source_records", text)
+            self.assertNotIn("case_snapshot", text)
+        specs = {spec["name"]: spec["inputSchema"]["json"] for spec in model.specs}
+        self.assertNotIn("evaluate_recovery_options", specs)
+        self.assertEqual(set(specs["update_task"]["properties"]), {"action_id", "status", "inability_reason"})
+
+    def test_sdk_task_raw_extra_fields_are_rejected_and_saved_plan_prompt_is_compact(self):
+        from backend.stillhere.planner.plans import action_id
+        runtime, model, command = self.planner_runtime([
+            {"name": "revise_recovery_plan", "input": {"program_id": "co_state_id_replacement"}},
+            {"name": "update_task", "input": {"action_id": action_id("co_state_id_replacement", "co_id_office_renewal"), "status": "skipped", "verified": True}},
+            "Plan saved; unsupported authority report rejected."])
+        config = AgentConfig(enable_plan_revision=True, enable_tasks=True)
+        result = AgentRuntime(self.service, config, StrandsBedrockProvider(config, model)).handle(self.token, command)
+        self.assertEqual(result["case_snapshot"]["conversation"]["turns"][-1]["state"], "complete")
+        self.assertEqual(result["case_snapshot"]["plan"]["actions"][1]["status"], "blocked")
+        next_model = ScriptedModel(["Your saved plan has unresolved questions; costs and eligibility remain unknown."])
+        runtime = AgentRuntime(self.service, config, StrandsBedrockProvider(config, next_model))
+        command = dict(command, event_id="next_plan", expected_case_version=result["case_snapshot"]["case_version"],
+                       payload={"message_id": "next_plan_user", "text": "What is my current plan status?"})
+        result = runtime.handle(self.token, command)
+        self.assertEqual(result["case_snapshot"]["conversation"]["turns"][-1]["state"], "complete")
+        prompt = json.loads(next_model.messages[0]["content"][0]["text"])
+        self.assertIn("diagnostics_truncated", prompt["current_case"]["plan"])
+        self.assertNotIn("requirements", prompt["current_case"]["plan"]["actions"][0])
+        self.assertTrue(result["case_snapshot"]["plan"]["actions"][0]["requirements"])
+
     def fact_step(self, **extra):
         return {"name": "correct_fact", "input": {"fact_key": "mobility", "value": "no_car", "observed_at": "2026-10-10T15:00:00Z", **extra}}
 
@@ -367,7 +470,8 @@ class StrandsIntegrationTests(unittest.TestCase):
             "stopReason": "end_turn", "usage": {"inputTokens": 20, "outputTokens": 10, "totalTokens": 30},
             "metrics": {"latencyMs": 1},
         }
-        config = AgentConfig(model_id="us.openai.gpt-6-luna", region="us-east-2")
+        config = AgentConfig(model_id="synthetic-sonnet-profile", region="us-east-2",
+                             enable_plan_revision=True, enable_tasks=True)
         # Replace the SDK session before construction: never inspect a user's AWS
         # profile, environment credentials or network during this request check.
         with patch("strands.models.bedrock.boto3.Session", return_value=session):
@@ -377,11 +481,24 @@ class StrandsIntegrationTests(unittest.TestCase):
         request = client.converse.call_args.kwargs
         self.assertEqual(request["inferenceConfig"], {"maxTokens": 1024})
         self.assertNotIn("additionalModelRequestFields", request)
-        self.assertEqual(len(request["toolConfig"]["tools"]), 2)
+        self.assertEqual(len(request["toolConfig"]["tools"]), 4)
         self.assertNotIn(self.token, json.dumps(request))
         for tool in request["toolConfig"]["tools"]:
             self.assertNotIn("strict", tool["toolSpec"])
             self.assertNotIn("$ref", json.dumps(tool["toolSpec"]["inputSchema"]))
+            schema = tool["toolSpec"]["inputSchema"]["json"]
+            self.assertEqual(schema["type"], "object")
+            for keyword in ("anyOf", "oneOf", "allOf"):
+                self.assertNotIn(keyword, schema)
+            if tool["toolSpec"]["name"] == "update_task":
+                self.assertFalse(schema["additionalProperties"])
+                self.assertEqual(set(schema["properties"]), {"action_id", "status", "inability_reason"})
+                from backend.stillhere.contracts import InvalidInput, validate
+                # The provider envelope does not weaken backend mutual exclusion.
+                for invalid in ({"action_id": "saved_action"},
+                                {"action_id": "saved_action", "status": "completed", "inability_reason": None}):
+                    with self.assertRaises(InvalidInput):
+                        validate("TaskUpdatePayload", invalid)
         loader = Loader(extra_search_paths=[str(Path(botocore.__file__).parent / "data")], include_default_search_paths=False)
         service = ServiceModel(loader.load_service_model("bedrock-runtime", "service-2"))
         validate_parameters(request, service.operation_model("Converse").input_shape)

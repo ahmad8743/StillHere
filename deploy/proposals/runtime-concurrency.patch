@@ -1,0 +1,69 @@
+--- a/backend/stillhere/agent/runtime.py
++++ b/backend/stillhere/agent/runtime.py
+@@ -17,6 +17,8 @@
+ class AgentRuntime:
+     def __init__(self, service, config=None, provider=None, registry=None, diagnostics=None, incident_facade=None, resource_catalog=None, rule_store=None, official_fetcher=None):
+         self.service = service
++        self.provider_slots = threading.BoundedSemaphore(4)
++        self.continuation_slots = threading.BoundedSemaphore(4)
+         self.config = config or AgentConfig()
+         self.diagnostics = diagnostics
+         self.provider = provider or StrandsBedrockProvider(self.config, diagnostics=diagnostics)
+@@ -61,6 +63,25 @@
+         return result
+ 
+     def process(self, token, case_id, event_id):
++        # Leave accepted work queued when all provider calls are occupied.
++        # A timed-out provider retains its slot until it actually exits.
++        if not self.provider_slots.acquire(blocking=False):
++            return
++        started = [False]
++        released = [False]
++        guard = threading.Lock()
++        def release():
++            with guard:
++                if not released[0]:
++                    released[0] = True
++                    self.provider_slots.release()
++        try:
++            self._process_bounded(token, case_id, event_id, started, release)
++        finally:
++            if not started[0]:
++                release()
++
++    def _process_bounded(self, token, case_id, event_id, started, release):
+         claim = self.service.claim_agent_turn(token, case_id, event_id, self.config.timeout_seconds)
+         if claim is None:
+             return
+@@ -95,8 +116,12 @@
+                 # Exception strings can include provider credentials, prompt text or case details.
+                 outcome.put(("", {"code": "agent_provider_unavailable", "message": "The model provider could not complete this turn. Accepted changes remain saved; send a new message to continue.", "retryable": False}))
+ 
++            finally:
++                release()
++
+         worker = threading.Thread(target=work, daemon=True)
+         worker.start()
++        started[0] = True
+         try:
+             text, issue = outcome.get(timeout=self.config.timeout_seconds)
+         except queue.Empty:
+@@ -114,7 +139,17 @@
+         if queued:
+             # A request received during this run is already durable and authorized.
+             # Continue it after releasing the case claim, without extending this HTTP wait.
+-            threading.Thread(target=self._continue, args=(token, case_id, queued["event_id"]), daemon=True).start()
++            if self.continuation_slots.acquire(blocking=False):
++                def continue_bounded():
++                    try:
++                        self._continue(token, case_id, queued["event_id"])
++                    finally:
++                        self.continuation_slots.release()
++                try:
++                    threading.Thread(target=continue_bounded, daemon=True).start()
++                except BaseException:
++                    self.continuation_slots.release()
++                    raise
+ 
+     def _continue(self, token, case_id, event_id):
+         try:

@@ -77,11 +77,18 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if self.command == "GET" and path == "/health":
             return self._send(200, {"contract_version": VERSION, "status": "ok", "implemented_commands": list(COMMAND_HANDLERS)})
+        if self.command == "GET" and (path == "/v1/operator/queue" or path.startswith("/v1/operator/cases/")):
+            if self.headers.get("X-Contract-Version") != VERSION:
+                raise ServiceError(400, "unsupported_contract", "Operator reads require contract version 0.1.")
+            case_id = unquote(path.rsplit("/", 1)[1]) if path.startswith("/v1/operator/cases/") and path.count("/") == 4 else None
+            if path != "/v1/operator/queue" and case_id is None:
+                raise ServiceError(404, "route_unavailable", "Route is unavailable.")
+            return self._send(200, self.server.service.read_operator_queue(self._token(), case_id))
         if self.command == "GET" and path.startswith("/v1/cases/") and path.count("/") == 3:
             return self._send(200, self.server.service.read_case(
                 self._token(), unquote(path.rsplit("/", 1)[1]), self.headers.get("X-Contract-Version")
             ))
-        if self.command != "POST" or path not in ("/v1/sessions", "/v1/cases", "/v1/commands"):
+        if self.command != "POST" or path not in ("/v1/sessions", "/v1/cases", "/v1/commands", "/v1/operator/commands"):
             raise ServiceError(404, "route_unavailable", "Route is unavailable.")
         body = self._body()
         if path == "/v1/sessions":
@@ -92,6 +99,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(201, self.server.service.create_session())
         if path == "/v1/cases":
             result = self.server.service.create_case(self._token(), body)
+        elif path == "/v1/operator/commands":
+            result = self.server.service.execute_operator(self._token(), body)
         else:
             result = self.server.agent_runtime.handle(self._token(), body)
         status = {"applied": 200, "already_applied": 200, "conflict": 409, "rejected": 400, "unavailable": 503, "needs_clarification": 200}[result["status"]]

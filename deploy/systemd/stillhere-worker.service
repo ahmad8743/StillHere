@@ -1,0 +1,47 @@
+[Unit]
+Description=StillHere standalone worker (integration gate; leave disabled)
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+ConditionPathExists=/etc/stillhere/worker.accepted
+
+[Service]
+Type=exec
+User=stillhere
+Group=stillhere
+WorkingDirectory=/opt/stillhere/current
+EnvironmentFile=/etc/stillhere/runtime.conf
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+UnsetEnvironment=AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_PROFILE AWS_DEFAULT_PROFILE PYTHONPATH PYTHONHOME
+Environment=AWS_EC2_METADATA_DISABLED=true
+Environment=AWS_CONFIG_FILE=/dev/null
+Environment=AWS_SHARED_CREDENTIALS_FILE=/dev/null
+ExecStart=/opt/stillhere/current/.venv/bin/python deploy/run_worker.py
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=90s
+UMask=0077
+StateDirectory=stillhere
+StateDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# SQLite only; deny IP networking independently of application behavior.
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+LimitCORE=0
+MemoryMax=1G
+TasksMax=64
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

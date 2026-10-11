@@ -21,6 +21,9 @@ boundary review.
 | `fetch_official_source` | Opt-in | Approved public source registry; `OfficialSourceToolArguments`; unreviewed `OfficialFetchResult` |
 | `propose_rule_candidate` | Opt-in review group | CaseService public review submission; `RuleCandidateToolArguments`; unpublished `KnowledgeSubmissionResult` |
 | `report_rule_discrepancy` | Opt-in review group | CaseService public discrepancy submission; `RuleDiscrepancyToolArguments`; unpublished `KnowledgeSubmissionResult` |
+| `evaluate_recovery_options` | Opt-in | C05 pure AND/OR planner over authorized Boolean facts/published rules; `RecoveryOptionToolArguments`; read-only `RecoveryOptionResult` |
+| `revise_recovery_plan` | Opt-in | CaseService recomputation/atomic plan commit; `ReviseRecoveryPlanToolArguments`; compact `RecoveryMutationResult` |
+| `update_task` | Opt-in | Existing public `task.update` command; `TaskUpdatePayload`; compact `RecoveryMutationResult` |
 
 Set `STILLHERE_AGENT_ENABLE_INTAKE=true` when integrating the intake adapter. Its
 shared selection vocabulary, unknown coverage, provenance, and consent behavior
@@ -42,6 +45,31 @@ partial. The new knowledge failure/discrepancy branch is live-verified; national
 extraction remains pending. Other inventory tools remain unregistered. C09 is
 outside the current chat's work.
 
+Set `STILLHERE_AGENT_ENABLE_PLANNER=true` for the independently opt-in C05
+read-only evaluator. The first slice is READY_FOR_INTEGRATION; full C05 is
+IN_PROGRESS. It returns evaluated requirements, necessary blockers/questions,
+sourced OR/sibling alternatives and null costs. Partial policy and agency gates
+keep options provisional; explicit unmet requirements/access can block a route.
+No car alone asks about other office transport; reported unavailable transport
+blocks only in-person access. Published rules are read without registering rule
+lookup or enabling other optional groups. Plan/task writes use the separate
+opt-in slices below.
+[C05 handoff and user tests](planner-integration.md).
+
+Two additional C05 slices are READY_FOR_INTEGRATION: atomic saved-plan revision
+and task reports/reassessment. Enable their tools independently with
+`STILLHERE_AGENT_ENABLE_PLAN_REVISION=true` and
+`STILLHERE_AGENT_ENABLE_TASKS=true` (both default false). CaseService recomputes
+the plan and owns every source/version/audit write. Reports remain user-reported,
+retain completed/skipped work and mark affected evaluations pending; no-car alone
+does not establish unavailable transport. Explicit inability resolution never
+declares a route ready. Full C05 and live proofs remain pending.
+
+The new write adapters and initial saved-plan model context use bounded summaries.
+Public C01 command results/read_case retain the full snapshot and history. The
+summary includes unknowns, input freshness and explicit diagnostic truncation.
+No C09/frontend change was made. [Full contract and latest evidence](planner-integration.md).
+
 `backend/stillhere/agent/registry.py` records each name, description, input/result
 schema, callable, role, access classification, component, and budget cost. Add a
 domain adapter, agreed shared definitions, registry entry, and focused validation,
@@ -60,6 +88,8 @@ checks raw arguments before SDK signature validation can discard extra fields.
 Tool calls are serialized; case writes pass through the normal command service.
 Read-only rule lookup authorizes case access and returns public reference data
 without committing domain state or snapshot attribution.
+The planner also returns a read-only result, checking the exact case/rule query
+and revalidating the case version/deadline before exposing any options.
 
 ## Run locally and configure Bedrock
 
@@ -135,7 +165,7 @@ read by Codex. Nonblank process environment values take precedence over
 The smoke command appends phase timings and allowlisted error codes to
 `var/agent-smoke.jsonl` (already excluded from Git). Override it with `--log-file`.
 New `smoke_started` and `smoke_passed` records identify the allowlisted mode
-(`default`, `incidents`, `resources`, `rules`, `knowledge`, `fetch`, `access`); free-text modes are
+(`default`, `incidents`, `resources`, `rules`, `knowledge`, `fetch`, `planner`, `access`); free-text modes are
 excluded. Knowledge pass records additionally include allowlisted `retrieval_state`
 (`available`, `unavailable`, `unknown`); failure handling does not prove successful
 live extraction. The log never includes credential values, model/profile IDs, prompts, case content,
@@ -340,3 +370,56 @@ public fetching and the strict Sonnet `--fetch` proof now pass: the safe log
 records one completed tool call and available retrieval at 13.265 seconds.
 The fetched guidance and official link appear in the saved reply, domains/policy
 stay unchanged and replay passes. This clears the prerequisite for C05.
+
+## C05 first read-only slice evidence
+
+28 planner checks and two new real-SDK checks pass; the planner/rule/SDK run passes
+75 checks. The shared non-HTTP run passes 288 checks, including 55 concurrent
+finance checks. Later full discovery runs 295 checks: 290 pass, including 57
+concurrent finance checks and 19 real-SDK checks; five existing HTTP checks fail
+at host-prohibited loopback binding. The C05 addition is 30 checks relative to the
+208-check baseline. Concurrent finance files were preserved. Tests use synthetic
+configuration/scripted providers and temporary cases.
+
+The user-run live check is
+`.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --planner`.
+It uses the existing Sonnet 4.5 settings, creates a disposable synthetic CO case,
+requires a sourced provisional online/blocked office evaluation and saved reply,
+checks unknown costs/eligibility and unchanged domains/catalog, and replays without
+another evaluation. Safe logs include `mode: planner`; no source fetch is needed.
+Codex has not run the credentialed proof or loaded private configuration. P2
+review and trusted confirmations remain separate gates; the next milestone
+below completes plan revision/commit and task history. [Result semantics and complete checklist](planner-integration.md).
+
+Current C05 lifecycle validation supersedes the earlier counts: 108 focused
+checks and all 325 non-HTTP checks pass among 330 discovered, including 21 real-SDK
+and 59 concurrent finance checks. Five existing HTTP checks remain pending under
+host loopback policy; `/health` now advertises `task.update`. The user-run saved
+plan workflow is
+`.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --plan`.
+It requires saving, an explicit completed-task report, a preserving revision,
+sourced saved reply and replay, with facts/ledger/policy unchanged. Safe mode is
+`plan`; its bounded proof allowance is at least six turns/24,000 tokens for the
+three-step workflow, without changing ordinary defaults. No credentialed proof
+was run by Codex. Sonnet 4.5 and existing uncommitted work are preserved.
+
+
+C05 tool-schema compatibility (2026-10-11): `update_task` sends a simple root
+object envelope to Bedrock rather than the contract's root `anyOf`. The raw
+model input still passes strict `TaskUpdatePayload` validation before writes.
+Safe provider diagnostics now recognize `tool_schema_unsupported`; no raw AWS
+message is logged. The four-tool mocked Converse request and all 325 non-HTTP
+checks pass. The user must rerun `agent.smoke --env-file .env.local --plan` to
+confirm live compatibility; private configuration was not read by Codex.
+
+
+Live C05 plan proof verified (2026-10-11): the user-run safe log now records
+two successful `mode: plan` runs at 12.444 and 13.516 seconds, each with three
+completed tools. The proof requires two accepted plan revisions, one retained
+user-reported online completion, blocked office access, source records, unknown
+eligibility and costs, provisional plan state, a saved reply containing the
+official online URL, unchanged facts/ledger/policy and an identical replay
+without additional plan/task calls. The synthetic case database is disposable;
+no agency submission, eligibility confirmation, fresh Colorado extraction or
+full C05 readiness is established. Live save/report/preserving-revision/replay
+verification is now passed following the provider schema fix.

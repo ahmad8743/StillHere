@@ -130,7 +130,7 @@ The mock case snapshot is stored under `stillhere.p2.mock-case.v1` in browser lo
 - The snapshot schema fixes top-level sections, typed conversation turns, and basic types. Populated source, action, financial, check-in, and other domain records remain to be defined by their owners. The descriptor schema validates kind/shape; record-reference validation belongs to the future publisher. The local validator implements only the schema vocabulary currently used; update it when introducing schema keywords.
 - Household sessions accept `chat`, `dashboard`, and `text_simulator`; they cannot acquire operator/system authority by selecting a channel or supplying a role. All other baseline command types return `unsupported_command` until their handlers exist. Keep P2 mocks labeled and separate from real endpoint capability.
 
-The full contract freeze still requires P2 review, remaining domain schemas, and fixtures. C01-facing Strands adapters and the bounded C02 runtime are ready for integration; the live Bedrock tool/update/reply/replay proof has passed. C03 incident adapters and the opt-in `get_incident_context` tool are now ready for integration, with live public-source checks and offline populated/failure/SDK evidence. Enable `STILLHERE_AGENT_ENABLE_INCIDENTS=true` to use them. C01 and the broader C02 component remain in progress. P2's C08 finance and C09 intake/chat prototypes are in progress in `frontend/`; remaining domain features, UI/API integration and deployment are pending. C04's five bounded slices are ready for integration: reviewed referrals, scoped rule graphs, bounded official fetching, separate public candidate/discrepancy submission and local manual publication with immutable history. The earlier user-run rules/resources proofs passed; the new knowledge failure/discrepancy branch passes at 13.569 seconds. Successful national USAGov fetching and the strict model/reply/replay proof now pass; Colorado live candidate extraction remains pending. Full policy coverage and household eligibility remain unknown. See the [referral handoff](docs/resource-integration.md), [rule handoff](docs/program-rules-integration.md), and [fetch/review handoff and user test checklist](docs/knowledge-review-integration.md). Current validation passes 203 non-HTTP checks; five existing HTTP checks are blocked by this session's loopback-bind policy. The required live-fetch example now passes; C05's deterministic planner is next. C09 implementation is deferred for this chat. The [agent handoff](docs/agent-integration.md) covers the allowlist, durable chat states, configuration and next adapter rules. `CaseService` owns durable writes with backend-supplied authenticated context.
+The full contract freeze still requires P2 review, remaining domain schemas, and fixtures. C01-facing Strands adapters and the bounded C02 runtime are ready for integration; the live Bedrock tool/update/reply/replay proof has passed. C03 incident adapters and the opt-in `get_incident_context` tool are now ready for integration, with live public-source checks and offline populated/failure/SDK evidence. Enable `STILLHERE_AGENT_ENABLE_INCIDENTS=true` to use them. C01 and the broader C02 component remain in progress. P2's C08 finance and C09 intake/chat prototypes are in progress in `frontend/`; remaining domain features, UI/API integration and deployment are pending. C04's five bounded slices are ready for integration: reviewed referrals, scoped rule graphs, bounded official fetching, separate public candidate/discrepancy submission and local manual publication with immutable history. The earlier user-run rules/resources proofs passed; the new knowledge failure/discrepancy branch passes at 13.569 seconds. Successful national USAGov fetching and the strict model/reply/replay proof now pass; Colorado live candidate extraction remains pending. Full policy coverage and household eligibility remain unknown. See the [referral handoff](docs/resource-integration.md), [rule handoff](docs/program-rules-integration.md), and [fetch/review handoff and user test checklist](docs/knowledge-review-integration.md). Current C05 validation passes 75 focused planner/rule/SDK checks. Later shared discovery runs 295 checks with 290 passes and five existing HTTP loopback-bind errors, including 57 concurrent finance checks. The required live-fetch example passes; C05's first read-only deterministic planner slice is ready for integration, with full C05 in progress. C09 implementation is deferred for this chat. The [agent handoff](docs/agent-integration.md) covers the allowlist, durable chat states, configuration and next adapter rules. `CaseService` owns durable writes with backend-supplied authenticated context.
 
 For local reset, stop the server and remove `var/cases.sqlite3` and any matching `-wal`/`-shm` files. This erases synthetic cases, audit events, and sessions together. The database, `.env`/`.env.*` credential files, and `.references/` directory are ignored by Git; blank `.env.example` templates may be tracked. The project Codex permission profile denies `.env` and `.env.local` reads when active; managed/current-session policy can override selection. `AGENTS.md` also instructs secret avoidance. See the [secret controls](docs/agent-integration.md#secret-file-controls). New databases use private file permissions. Any future browser persistence needs the specified opt-in/erase controls.
 
@@ -195,3 +195,42 @@ with one completed tool call and `mode: fetch` / available retrieval in the safe
 log. Saved sourced reply, unchanged domains/policy and replay passed. This clears
 the live-fetch prerequisite for C05; national guidance remains unreviewed, and
 Colorado policy extraction/HTTP/shared-review checks remain separate.
+
+## C05 read-only recovery evaluation
+
+`STILLHERE_AGENT_ENABLE_PLANNER=true` independently enables
+`evaluate_recovery_options` (default false). It evaluates the authorized case's
+explicit Boolean availability/completion facts against published AND/OR rules,
+returning provisional/blocked options, necessary blockers/questions, sourced
+alternatives and unknown costs. No car alone asks about other transport;
+reported unavailable office transport blocks the office path while preserving
+the sourced online alternative. Partial coverage and agency gates remain
+unresolved. This tool does not save a plan or update tasks/finance/policy.
+[Full contract, evidence and remaining C05 gates](docs/planner-integration.md).
+
+The user can run the new disposable Sonnet 4.5 proof:
+
+```sh
+.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --planner
+```
+
+It enables its own tool, requires a sourced saved reply and unchanged domains,
+and verifies replay without another evaluation. Live C05 proof remains pending;
+Codex uses synthetic configuration for all tests.
+
+Two further C05 slices now save plan revisions and task reports through
+CaseService. Independently enable `STILLHERE_AGENT_ENABLE_PLAN_REVISION=true`
+and `STILLHERE_AGENT_ENABLE_TASKS=true` for `revise_recovery_plan` and `update_task`.
+The existing public `task.update` command supports explicit completion/skipping,
+allowlisted inability and explicit resolution. Completed work, source attribution
+and history survive revision; no facts, eligibility, money or consent are inferred.
+Compact model summaries retain unknowns and stale-input markers; full records
+remain in the case snapshot. Full C05 and live verification remain pending.
+
+Current validation passes 108 focused and all 325 non-HTTP checks among 330
+discovered; five HTTP checks require local verification. The user runs:
+
+```sh
+.venv/bin/python -W error::ResourceWarning -m unittest discover -s tests -q
+.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --plan
+```

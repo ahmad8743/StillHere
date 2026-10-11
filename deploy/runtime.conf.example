@@ -1,0 +1,24 @@
+# Non-secret systemd EnvironmentFile syntax. No export, shell substitution or values
+# copied from private configuration. Install as /etc/stillhere/runtime.conf (0640).
+AWS_REGION=us-east-2
+STILLHERE_BEDROCK_MODEL_ID=
+STILLHERE_AGENT_MAX_TURNS=4
+STILLHERE_AGENT_MAX_TOOL_CALLS=6
+STILLHERE_AGENT_MAX_OUTPUT_TOKENS=1024
+STILLHERE_AGENT_MAX_TOTAL_TOKENS=12000
+STILLHERE_AGENT_TIMEOUT_SECONDS=60
+STILLHERE_AGENT_HISTORY_TURNS=12
+STILLHERE_AGENT_MAX_CONTEXT_CHARS=48000
+STILLHERE_AGENT_ENABLE_INTAKE=false
+STILLHERE_AGENT_ENABLE_INCIDENTS=false
+STILLHERE_AGENT_ENABLE_RESOURCES=false
+STILLHERE_AGENT_ENABLE_RULES=false
+STILLHERE_AGENT_ENABLE_OFFICIAL_SOURCES=false
+STILLHERE_AGENT_ENABLE_RULE_REVIEW=false
+STILLHERE_AGENT_ENABLE_PLANNER=false
+STILLHERE_AGENT_ENABLE_PLAN_REVISION=false
+STILLHERE_AGENT_ENABLE_TASKS=false
+# Intentionally empty: integrator supplies the accepted standalone module.
+# Current concurrent candidate: backend.stillhere.worker (simulated check-ins;
+# does not require model credentials). Leave disabled until its acceptance.
+STILLHERE_WORKER_MODULE=

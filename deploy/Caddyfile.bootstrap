@@ -1,0 +1,16 @@
+{
+    auto_https off
+    log default {
+        output discard
+    }
+}
+# Bootstrap exposes ONLY ACME tokens. It never exposes the API over plaintext.
+http://172.238.189.78 {
+    handle /.well-known/acme-challenge/* {
+        root * /var/lib/stillhere-acme
+        file_server
+    }
+    handle {
+        respond "TLS setup pending." 503
+    }
+}

@@ -1,0 +1,2994 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stillhere:parallel:finance:proposal:0.1",
+  "title": "C08 proposed bounded finance definitions (not the frozen C01 schema)",
+  "description": "CaseService is the sole durable writer. JSON Schema validates shapes; Python validates references, reconciliation, dates, restrictions and replay. Provenance is caller supplied, never inferred.",
+  "$ref": "#/$defs/FinanceUpdatePayload",
+  "$defs": {
+    "MoneySource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "type": {
+          "enum": [
+            "cash",
+            "account",
+            "received_assistance"
+          ]
+        },
+        "currency": {
+          "const": "USD"
+        },
+        "balance_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "accessible": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "as_of": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "restrictions": {
+          "anyOf": [
+            {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reflected_event_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "aid_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "freshness": {
+          "enum": [
+            "current",
+            "stale",
+            "conflicting",
+            "unknown",
+            null
+          ]
+        },
+        "balance_epoch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "available_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "currency",
+        "balance_cents",
+        "accessible",
+        "as_of",
+        "restrictions"
+      ],
+      "additionalProperties": true
+    },
+    "ExpenseCommitment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "currency": {
+          "const": "USD"
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "essential": {
+          "type": "boolean"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "due_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "frequency": {
+          "const": "daily"
+        },
+        "fulfilled_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fulfilled_cents_by_date": {
+          "type": "object",
+          "maxProperties": 256,
+          "propertyNames": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "amount_cents",
+        "essential"
+      ],
+      "additionalProperties": true,
+      "oneOf": [
+        {
+          "required": [
+            "date"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "start_date"
+                ]
+              },
+              {
+                "required": [
+                  "end_date"
+                ]
+              },
+              {
+                "required": [
+                  "fulfilled_cents_by_date"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "required": [
+            "start_date",
+            "end_date"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "date"
+                ]
+              },
+              {
+                "required": [
+                  "due_at"
+                ]
+              },
+              {
+                "required": [
+                  "fulfilled_cents"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "Support": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "state": {
+          "enum": [
+            "confirmed",
+            "hypothetical",
+            "unknown",
+            "unavailable"
+          ]
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "categories": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "commitment_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "household_coverage": {
+          "enum": [
+            "full",
+            "partial",
+            "unknown"
+          ]
+        },
+        "covers_full_cost": {
+          "type": "boolean"
+        },
+        "daily_limit_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "total_limit_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "consumed_cents": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "state",
+        "start_date",
+        "end_date"
+      ],
+      "additionalProperties": true
+    },
+    "HypotheticalSupport": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/Support"
+        },
+        {
+          "properties": {
+            "state": {
+              "const": "hypothetical"
+            }
+          }
+        }
+      ]
+    },
+    "Aid": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "stage": {
+          "enum": [
+            "unknown",
+            "suggested",
+            "applied",
+            "pending",
+            "approved",
+            "denied",
+            "received"
+          ]
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_date": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "restrictions": {
+          "anyOf": [
+            {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actual_receipt_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "stage"
+      ],
+      "additionalProperties": true
+    },
+    "ActualEventInput": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "kind": {
+          "enum": [
+            "expense",
+            "receipt",
+            "transfer"
+          ]
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "const": "USD"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "money_source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "to_money_source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "state": {
+          "enum": [
+            "posted",
+            "proposed"
+          ]
+        },
+        "commitment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "commitment_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "aid_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "restrictions": {
+          "anyOf": [
+            {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "matching_refs": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "amount_cents",
+        "currency",
+        "source",
+        "money_source_id"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "expense"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "category"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "category"
+                  ]
+                },
+                {
+                  "required": [
+                    "commitment_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "commitment_date"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "receipt"
+              }
+            }
+          },
+          "then": {},
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "aid_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "restrictions"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "receipt"
+              },
+              "state": {
+                "not": {
+                  "const": "proposed"
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "restrictions"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "transfer"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "to_money_source_id"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "to_money_source_id"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "commitment_date"
+            ]
+          },
+          "then": {
+            "required": [
+              "commitment_id"
+            ]
+          }
+        }
+      ]
+    },
+    "ActualEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "kind": {
+          "enum": [
+            "expense",
+            "receipt",
+            "transfer"
+          ]
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "const": "USD"
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "money_source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "to_money_source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "state": {
+          "enum": [
+            "posted",
+            "proposed"
+          ]
+        },
+        "commitment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "commitment_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "aid_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "restrictions": {
+          "anyOf": [
+            {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "matching_refs": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "balance_epochs": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "balance_effects": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer"
+          }
+        },
+        "snapshot_reflected_source_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "fulfillment_was_reflected": {
+          "type": "boolean"
+        },
+        "aid_before_receipt": {
+          "type": "object",
+          "properties": {
+            "stage": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "actual_receipt_id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 256,
+                  "pattern": "\\S"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "stage",
+            "actual_receipt_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "amount_cents",
+        "currency",
+        "source",
+        "money_source_id"
+      ],
+      "additionalProperties": true
+    },
+    "HypotheticalReceipt": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "state": {
+          "const": "hypothetical"
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "currency": {
+          "const": "USD"
+        },
+        "restrictions": {
+          "anyOf": [
+            {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "available_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "aid_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "id",
+        "state",
+        "amount_cents",
+        "currency",
+        "restrictions",
+        "date"
+      ],
+      "additionalProperties": true
+    },
+    "FinancialScenario": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S",
+          "not": {
+            "const": "baseline"
+          }
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "receipts": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/HypotheticalReceipt"
+          }
+        },
+        "support": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/HypotheticalSupport"
+          }
+        },
+        "alternative_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "ActionCostCommitment": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ExpenseCommitment"
+        },
+        {
+          "required": [
+            "action_id"
+          ],
+          "properties": {
+            "fulfilled_cents": {
+              "const": 0
+            },
+            "fulfilled_cents_by_date": {
+              "maxProperties": 0
+            }
+          }
+        }
+      ]
+    },
+    "ActionAlternative": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "costs": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/ActionCostCommitment"
+          },
+          "minItems": 1
+        },
+        "replaces_commitment_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "costs"
+      ],
+      "additionalProperties": false
+    },
+    "StoredScenario": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S",
+          "not": {
+            "const": "baseline"
+          }
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "receipts": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/HypotheticalReceipt"
+          }
+        },
+        "support": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/HypotheticalSupport"
+          }
+        },
+        "alternative_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "action_cost_snapshot": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/ActionAlternative"
+          }
+        },
+        "forecast_start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "action_cost_snapshot",
+        "forecast_start_date"
+      ],
+      "additionalProperties": false
+    },
+    "AuditChange": {
+      "type": "object",
+      "properties": {
+        "collection": {
+          "enum": [
+            "money_sources",
+            "expense_commitments",
+            "actual_events",
+            "aid",
+            "support",
+            "scenarios"
+          ]
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "before": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "after": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "collection",
+        "record_id",
+        "before",
+        "after"
+      ],
+      "additionalProperties": false
+    },
+    "FinanceAudit": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "received_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "changed_record_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "changes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/AuditChange"
+          }
+        },
+        "reconciliation_notes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "fingerprint",
+        "payload",
+        "effective_at",
+        "received_at",
+        "changed_record_ids",
+        "changes",
+        "reconciliation_notes"
+      ],
+      "additionalProperties": false
+    },
+    "FinanceLedger": {
+      "type": "object",
+      "properties": {
+        "money_sources": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/MoneySource"
+          }
+        },
+        "expense_commitments": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/ExpenseCommitment"
+          }
+        },
+        "actual_events": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/ActualEvent"
+          }
+        },
+        "aid": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/Aid"
+          }
+        },
+        "support": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/Support"
+          }
+        },
+        "finance_updates": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/FinanceAudit"
+          }
+        },
+        "scenarios": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/StoredScenario"
+          }
+        }
+      },
+      "required": [
+        "money_sources",
+        "expense_commitments"
+      ],
+      "additionalProperties": true
+    },
+    "BalanceSnapshot": {
+      "type": "object",
+      "properties": {
+        "money_source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "balance_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "as_of": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reflected_event_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "freshness": {
+          "enum": [
+            "current",
+            "stale",
+            "conflicting",
+            "unknown",
+            null
+          ]
+        }
+      },
+      "required": [
+        "money_source_id",
+        "balance_cents",
+        "as_of",
+        "reflected_event_ids"
+      ],
+      "additionalProperties": false
+    },
+    "FinanceUpdatePayload": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "record_expense"
+            },
+            "record": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/ActualEventInput"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "expense"
+                    }
+                  }
+                }
+              ]
+            },
+            "balance_reflected_source_ids": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            "commitment_fulfillment_reflected": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "operation",
+            "record"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "record_receipt"
+            },
+            "record": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/ActualEventInput"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "receipt"
+                    }
+                  }
+                }
+              ]
+            },
+            "balance_reflected_source_ids": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            "commitment_fulfillment_reflected": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "operation",
+            "record"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "record_transfer"
+            },
+            "record": {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/ActualEventInput"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "transfer"
+                    }
+                  }
+                }
+              ]
+            },
+            "balance_reflected_source_ids": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            "commitment_fulfillment_reflected": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "operation",
+            "record"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "correct_actual"
+            },
+            "record_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "replacement": {
+              "$ref": "#/$defs/ActualEventInput"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "balance_reflected_source_ids": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            "commitment_fulfillment_reflected": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "operation",
+            "record_id",
+            "replacement",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "reconcile_event"
+            },
+            "record_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "replacement": {
+              "$ref": "#/$defs/ActualEventInput"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "balance_reflected_source_ids": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            "commitment_fulfillment_reflected": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "operation",
+            "record_id",
+            "replacement",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "reconcile_correction"
+            },
+            "record_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "replacement": {
+              "$ref": "#/$defs/ActualEventInput"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "source_snapshots": {
+              "type": "array",
+              "maxItems": 2,
+              "items": {
+                "$ref": "#/$defs/BalanceSnapshot"
+              },
+              "minItems": 1
+            },
+            "commitment_fulfillment": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "commitment_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "\\S"
+                  },
+                  "date": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "fulfilled_cents": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "commitment_id",
+                  "date",
+                  "fulfilled_cents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "operation",
+            "record_id",
+            "replacement",
+            "reason",
+            "source_snapshots"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "set_balance"
+            },
+            "money_source_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            "balance_cents": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "as_of": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reflected_event_ids": {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "\\S"
+              },
+              "uniqueItems": true
+            },
+            "freshness": {
+              "enum": [
+                "current",
+                "stale",
+                "conflicting",
+                "unknown",
+                null
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            }
+          },
+          "required": [
+            "operation",
+            "money_source_id",
+            "balance_cents",
+            "as_of",
+            "reflected_event_ids"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "set_money_source"
+            },
+            "record": {
+              "$ref": "#/$defs/MoneySource"
+            }
+          },
+          "required": [
+            "operation",
+            "record"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "set_commitment"
+            },
+            "record": {
+              "$ref": "#/$defs/ExpenseCommitment"
+            }
+          },
+          "required": [
+            "operation",
+            "record"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "set_aid"
+            },
+            "record": {
+              "$ref": "#/$defs/Aid"
+            }
+          },
+          "required": [
+            "operation",
+            "record"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "set_support"
+            },
+            "record": {
+              "$ref": "#/$defs/Support"
+            }
+          },
+          "required": [
+            "operation",
+            "record"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "correct_record"
+            },
+            "collection": {
+              "const": "money_sources"
+            },
+            "record": {
+              "$ref": "#/$defs/MoneySource"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            }
+          },
+          "required": [
+            "operation",
+            "collection",
+            "record",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "correct_record"
+            },
+            "collection": {
+              "const": "expense_commitments"
+            },
+            "record": {
+              "$ref": "#/$defs/ExpenseCommitment"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            }
+          },
+          "required": [
+            "operation",
+            "collection",
+            "record",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "correct_record"
+            },
+            "collection": {
+              "const": "aid"
+            },
+            "record": {
+              "$ref": "#/$defs/Aid"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            }
+          },
+          "required": [
+            "operation",
+            "collection",
+            "record",
+            "reason"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "operation": {
+              "const": "correct_record"
+            },
+            "collection": {
+              "const": "support"
+            },
+            "record": {
+              "$ref": "#/$defs/Support"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            }
+          },
+          "required": [
+            "operation",
+            "collection",
+            "record",
+            "reason"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FinanceUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "ledger": {
+          "$ref": "#/$defs/FinanceLedger"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "received_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "time_zone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "update": {
+          "$ref": "#/$defs/FinanceUpdatePayload"
+        }
+      },
+      "required": [
+        "ledger",
+        "event_id",
+        "effective_at",
+        "received_at",
+        "time_zone",
+        "update"
+      ],
+      "additionalProperties": false
+    },
+    "ScenarioSetRequest": {
+      "type": "object",
+      "properties": {
+        "ledger": {
+          "$ref": "#/$defs/FinanceLedger"
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "effective_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "received_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "time_zone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "scenario": {
+          "$ref": "#/$defs/FinancialScenario"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "action_alternatives": {
+          "anyOf": [
+            {
+              "type": "array",
+              "maxItems": 256,
+              "items": {
+                "$ref": "#/$defs/ActionAlternative"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "ledger",
+        "event_id",
+        "effective_at",
+        "received_at",
+        "time_zone",
+        "scenario",
+        "start_date"
+      ],
+      "additionalProperties": false
+    },
+    "FinanceIssue": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "field",
+        "message",
+        "retryable"
+      ],
+      "additionalProperties": false
+    },
+    "FinanceUpdateResult": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "applied",
+            "needs_clarification",
+            "rejected"
+          ]
+        },
+        "replayed": {
+          "type": "boolean"
+        },
+        "next_ledger": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FinanceLedger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "changed_record_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "original_changed_record_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "reconciliation_notes": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "object"
+          }
+        },
+        "issues": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/FinanceIssue"
+          }
+        }
+      },
+      "required": [
+        "status",
+        "replayed",
+        "next_ledger",
+        "changed_record_ids",
+        "reconciliation_notes",
+        "issues"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "applied"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "next_ledger": {
+                "$ref": "#/$defs/FinanceLedger"
+              },
+              "issues": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "next_ledger": {
+                "type": "null"
+              },
+              "changed_record_ids": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ForecastWarning": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "message": {
+          "type": "string"
+        },
+        "affects_completeness": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "code",
+        "record_id",
+        "message",
+        "affects_completeness"
+      ],
+      "additionalProperties": false
+    },
+    "ExpenseAllocation": {
+      "type": "object",
+      "properties": {
+        "expense_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "action_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "essential": {
+          "type": "boolean"
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fulfilled_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "due_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unrestricted_expense_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unmet_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "known_inputs_unmet_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "support_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "restricted_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "support_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "restricted_source_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "expense_id",
+        "action_id",
+        "category",
+        "essential",
+        "amount_cents",
+        "fulfilled_cents",
+        "due_cents",
+        "support_cents",
+        "support_ids",
+        "restricted_cents",
+        "restricted_source_ids",
+        "unrestricted_expense_cents",
+        "unmet_cents",
+        "known_inputs_unmet_cents"
+      ],
+      "additionalProperties": false
+    },
+    "DailyProjection": {
+      "type": "object",
+      "properties": {
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "receipts_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expenses_due_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "uncovered_expense_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "unmet_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "known_receipts_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "known_expenses_due_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "support_coverage_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "restricted_coverage_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "known_uncovered_expense_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "known_inputs_unmet_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "remaining_restricted_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "projected_position_cents": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "known_inputs_projected_position_cents": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "known_inputs_unrestricted_position_cents": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "receipt_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "expense_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "action_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "expenses": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/ExpenseAllocation"
+          }
+        }
+      },
+      "required": [
+        "day",
+        "date",
+        "receipts_cents",
+        "expenses_due_cents",
+        "uncovered_expense_cents",
+        "unmet_cents",
+        "known_receipts_cents",
+        "known_expenses_due_cents",
+        "support_coverage_cents",
+        "restricted_coverage_cents",
+        "known_uncovered_expense_cents",
+        "known_inputs_unmet_cents",
+        "remaining_restricted_cents",
+        "projected_position_cents",
+        "known_inputs_projected_position_cents",
+        "known_inputs_unrestricted_position_cents",
+        "receipt_ids",
+        "expense_ids",
+        "action_ids",
+        "expenses"
+      ],
+      "additionalProperties": false
+    },
+    "ForecastProjection": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "scenario_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "time_zone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "state": {
+          "enum": [
+            "complete",
+            "incomplete"
+          ]
+        },
+        "opening_accessible_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opening_known_accessible_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "daily_projections": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "items": {
+            "$ref": "#/$defs/DailyProjection"
+          }
+        },
+        "first_gap": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 14
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "amount_cents": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "expense_ids": {
+                  "type": "array",
+                  "maxItems": 256,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "\\S"
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "day",
+                "date",
+                "amount_cents",
+                "expense_ids"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "first_essential_gap": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 14
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "amount_cents": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "expense_ids": {
+                  "type": "array",
+                  "maxItems": 256,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "\\S"
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "day",
+                "date",
+                "amount_cents",
+                "expense_ids"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "known_inputs_first_gap": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 14
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "amount_cents": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "expense_ids": {
+                  "type": "array",
+                  "maxItems": 256,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "\\S"
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "day",
+                "date",
+                "amount_cents",
+                "expense_ids"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "known_inputs_first_essential_gap": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 14
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "amount_cents": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "expense_ids": {
+                  "type": "array",
+                  "maxItems": 256,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "\\S"
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "day",
+                "date",
+                "amount_cents",
+                "expense_ids"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ending_projected_position_cents": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ending_known_inputs_position_cents": {
+          "type": "integer"
+        },
+        "scenario_assumptions": {
+          "type": "object"
+        },
+        "assumptions": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/ForecastWarning"
+          }
+        }
+      },
+      "required": [
+        "contract_version",
+        "scenario_id",
+        "label",
+        "input_case_version",
+        "time_zone",
+        "start_date",
+        "end_date",
+        "state",
+        "opening_accessible_cents",
+        "opening_known_accessible_cents",
+        "daily_projections",
+        "first_gap",
+        "first_essential_gap",
+        "known_inputs_first_gap",
+        "known_inputs_first_essential_gap",
+        "ending_projected_position_cents",
+        "ending_known_inputs_position_cents",
+        "scenario_assumptions",
+        "assumptions",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "ForecastBundle": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "baseline": {
+          "$ref": "#/$defs/ForecastProjection"
+        },
+        "scenarios": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/ForecastProjection"
+          }
+        }
+      },
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "baseline",
+        "scenarios"
+      ],
+      "additionalProperties": false
+    },
+    "FinanceReassessment": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "changed_record_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        },
+        "preserve_completed_actions": {
+          "const": true
+        }
+      },
+      "required": [
+        "required",
+        "reasons",
+        "input_case_version",
+        "changed_record_ids",
+        "preserve_completed_actions"
+      ],
+      "additionalProperties": false
+    },
+    "CurrentFinance": {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "baseline": {
+          "$ref": "#/$defs/ForecastProjection"
+        },
+        "scenarios": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/ForecastProjection"
+          }
+        },
+        "state": {
+          "enum": [
+            "current",
+            "incomplete"
+          ]
+        },
+        "computed_at": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
+        },
+        "publication_event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "baseline",
+        "scenarios",
+        "state",
+        "computed_at",
+        "publication_event_id"
+      ],
+      "additionalProperties": false
+    },
+    "PendingFinance": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "const": "pending"
+        },
+        "pending_input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "state",
+        "pending_input_case_version"
+      ],
+      "additionalProperties": true
+    },
+    "ForecastPublicationResult": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "applied"
+            },
+            "proposed_finance": {
+              "$ref": "#/$defs/CurrentFinance"
+            }
+          },
+          "required": [
+            "status",
+            "proposed_finance"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "conflict"
+            },
+            "reason": {
+              "const": "stale_finance_inputs"
+            },
+            "proposed_finance": {
+              "$ref": "#/$defs/PendingFinance"
+            }
+          },
+          "required": [
+            "status",
+            "reason",
+            "proposed_finance"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

@@ -238,6 +238,7 @@ class AgentTests(unittest.TestCase):
         diagnostics = SafeDiagnostics(path)
         ClientError = type("ClientError", (Exception,), {})
         fixtures = (
+            ("ValidationException", "tools.3.input_schema: input_schema does not support oneOf, allOf, or anyOf at the top level", "tool_schema_unsupported"),
             ("ValidationException", "The provided model identifier is invalid.", "model_identifier_invalid"),
             ("ValidationException", "Invocation with on-demand throughput isn't supported. Use an inference profile.", "inference_profile_required"),
             ("ValidationException", "This model doesn't support the temperature field.", "temperature_unsupported"),

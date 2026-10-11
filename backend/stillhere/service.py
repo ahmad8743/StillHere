@@ -9,9 +9,11 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from .commands import assistant_turn_id, COMMAND_HANDLERS, apply_command, validate_payload, with_intake
+from .commands import assistant_turn_id, COMMAND_HANDLERS, SERVICE_COMMANDS, apply_command, validate_payload, with_intake
 from .contracts import InvalidInput, VERSION, canonical_json, empty_case, utc_now, validate
 from .knowledge.review import KnowledgeServiceMixin
+from .planner.service import PlannerServiceMixin
+from .integration import IntegrationServiceMixin
 
 
 class ServiceError(Exception):
@@ -21,7 +23,7 @@ class ServiceError(Exception):
         super().__init__(message)
 
 
-class CaseService(KnowledgeServiceMixin):
+class CaseService(KnowledgeServiceMixin, PlannerServiceMixin, IntegrationServiceMixin):
     def __init__(self, database_path, clock=utc_now):
         self.path = Path(database_path)
         self.clock = clock
@@ -71,6 +73,7 @@ class CaseService(KnowledgeServiceMixin):
                 );
             """)
             self._init_knowledge(connection)
+            self._init_integration(connection)
         # Additive migration preserves databases created by the first C01 slice.
         with self._transaction() as connection:
             columns = {row["name"] for row in connection.execute("PRAGMA table_info(events)")}
@@ -202,7 +205,7 @@ class CaseService(KnowledgeServiceMixin):
         try:
             with self._transaction() as connection:
                 owner = self._session(connection, token)
-                if event_id.startswith(("agent_tool_", "agent_state_")):
+                if event_id.startswith(("agent_tool_", "agent_state_", "worker_")):
                     raise ServiceError(400, "reserved_event_id", "Agent event prefixes are reserved for backend-generated identities.")
                 return self._execute(connection, owner, command, event_id, now)
         except (InvalidInput, ServiceError, sqlite3.Error) as error:
@@ -215,6 +218,8 @@ class CaseService(KnowledgeServiceMixin):
             raise ServiceError(403, "channel_forbidden", "This session has household authority only.")
         if command["type"] not in COMMAND_HANDLERS:
             raise ServiceError(400, "unsupported_command", "This command is not implemented yet.")
+        if command["type"].startswith("follow_up."):
+            raise ServiceError(403, "channel_forbidden", "A scoped operator is required for review changes.")
         validate_payload(command["type"], command["payload"])
         logical = {key: value for key, value in command.items() if key != "expected_case_version"}
         fingerprint = self._fingerprint(logical)
@@ -243,7 +248,15 @@ class CaseService(KnowledgeServiceMixin):
             raise ServiceError(400, "message_id_reused", "Changed or repeated message identity requires the original event_id.")
         before_case = canonical_json(snapshot)
         before = snapshot["facts"].get(command["payload"]["fact_key"]) if command["type"] == "fact.correct" else None
-        snapshot = apply_command(snapshot, command, now)
+        if command["type"] in SERVICE_COMMANDS:
+            snapshot, domain_result = self._apply_integrated_command(connection, owner, snapshot, command, now)
+            if domain_result is not None:
+                return domain_result
+            snapshot["case_version"] += 1
+            snapshot["updated_at"] = now
+            validate("CaseSnapshot", snapshot)
+        else:
+            snapshot = apply_command(snapshot, command, now)
         connection.execute("UPDATE cases SET snapshot_json=? WHERE case_id=?", (canonical_json(snapshot), command["case_id"]))
         connection.execute(
             "UPDATE events SET applied_version=?, applied_received_at=?, before_fact_json=?, before_case_json=? WHERE case_id=? AND event_id=?",
@@ -324,7 +337,7 @@ class CaseService(KnowledgeServiceMixin):
                 owner = self._session(connection, token)
                 self._snapshot(connection, owner, case_id)
                 self._active_run(connection, case_id, parent_event_id, run_id, now)
-                if command_type not in ("fact.correct", "intake.submit"):
+                if command_type not in ("fact.correct", "intake.submit", "task.update"):
                     raise ServiceError(400, "tool_forbidden", "This agent tool is not permitted.")
                 parent = json.loads(connection.execute("SELECT command_json FROM events WHERE case_id=? AND event_id=?", (case_id, parent_event_id)).fetchone()["command_json"])
                 command = {

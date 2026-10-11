@@ -1,0 +1,231 @@
+--- a/backend/stillhere/integration.py
++++ b/backend/stillhere/integration.py
+@@ -28,7 +28,7 @@
+             else:
+                 start = command["payload"].get("start_date") or self._instant(now).astimezone(ZoneInfo(snapshot["time_zone"])).date().isoformat()
+                 try:
+-                    alternatives = self._finance_alternatives(snapshot, command["payload"]["scenario"].get("alternative_ids", []), now)
++                    alternatives = self._finance_alternatives(snapshot, command["payload"]["scenario"].get("alternative_ids", []), now, start_date=start)
+                 except InvalidInput as error:
+                     return snapshot, self._result(command["event_id"], "needs_clarification", now, snapshot, issue={"code": "action_costs_unresolved", "field": error.field, "message": str(error), "retryable": False})
+                 proposed = set_financial_scenario(ledger, command["payload"]["scenario"], event_id=command["event_id"],
+@@ -55,12 +55,19 @@
+             caller = Authority(snapshot["case_id"], "household", "household_" + owner[:32], permissions, True)
+             return self._apply_check_in_command(connection, snapshot, command, now, caller), None
+         if command["type"] == "application.update":
+-            from .applications import update_application
++            from .boundaries import update_application_boundary
+             application = next((item for item in snapshot["applications"] if item["id"] == command["payload"]["application_id"]), None)
+             if application is None:
+                 raise InvalidInput("$.application_id", "Select a saved application in this case.")
+-            rules = self._application_rules(snapshot, application["program_id"], application["rule_version"], now)
+-            proposal = update_application(snapshot, command["payload"], rules, event_id=command["event_id"], occurred_at=command["occurred_at"], received_at=now)
++            from .service import ServiceError
++            try:
++                rules = self._application_rules(snapshot, application["program_id"], application["rule_version"], now)
++            except ServiceError as error:
++                if error.issue["code"] != "application_rules_unavailable":
++                    raise
++                rules = None
++            proposal = update_application_boundary(snapshot, command["payload"], rules,
++                event_id=command["event_id"], occurred_at=command["occurred_at"], received_at=now)
+             snapshot["applications"] = [proposal["application"] if item["id"] == application["id"] else item for item in snapshot["applications"]]
+             snapshot["evidence"] = proposal["evidence"]
+             if command["payload"].get("evidence_changes"):
+@@ -75,34 +82,30 @@
+     def _instant(value):
+         return datetime.fromisoformat(value.replace("Z", "+00:00"))
+ 
+-    def _finance_alternatives(self, snapshot, selected_ids, now):
+-        from .planner.costs import export_action_costs, propose_alternative_selection
++    def _finance_alternatives(self, snapshot, selected_ids, now, *, start_date=None):
++        from .boundaries import reconcile_action_costs
+         if not selected_ids:
+             return []
+-        exported = export_action_costs(snapshot["plan"], input_case_version=snapshot["case_version"], as_of=now, time_zone=snapshot["time_zone"])
+-        proposal = propose_alternative_selection(exported, selected_ids, existing_commitments=snapshot["finance"]["ledger"]["expense_commitments"])
++        start_date = start_date or self._instant(now).astimezone(ZoneInfo(snapshot["time_zone"])).date().isoformat()
++        proposal = reconcile_action_costs(snapshot["plan"], snapshot["finance"]["ledger"], selected_ids,
++            input_case_version=snapshot["case_version"], as_of=now,
++            time_zone=snapshot["time_zone"], start_date=start_date)
+         if proposal["state"] != "proposed":
+-            raise InvalidInput("$.scenario.alternative_ids", "Reconcile current path selection and explicit dated costs before comparing; unknown costs remain unknown.")
+-        alternatives = []
+-        for identifier in selected_ids:
+-            individual = propose_alternative_selection(exported, [identifier], existing_commitments=snapshot["finance"]["ledger"]["expense_commitments"])
+-            costs = copy.deepcopy(individual["add_commitments"])
+-            # Domain export ownership metadata remains a trusted backend input.
+-            for cost in costs:
+-                if cost["date"] is None or cost["amount_cents"] is None:
+-                    raise InvalidInput("$.scenario.alternative_ids", "An action comparison requires known costs and explicit dates.")
+-                if cost.get("due_at") is None:
+-                    cost.pop("due_at", None)
+-                cost.update(origin="recovery_planner", fulfilled_cents=0, actual_event_ids=[])
+-            action = next(item for item in snapshot["plan"]["actions"] if item["id"] == identifier)
+-            alternatives.append({"id": identifier, "label": action["title"], "costs": costs, "replaces_commitment_ids": individual["remove_commitment_ids"]})
+-        return alternatives
++            raise InvalidInput("$.scenario.alternative_ids", "Reconcile action selection and dated costs before comparing; unknown dates remain unknown.")
++        return proposal["action_alternatives"]
+ 
+     def _refresh_finance(self, snapshot, now, event_id, *, start_date=None, input_version=None, changed_ids=()):
+         from .finance import compare_financial_scenarios, finance_reassessment, prepare_forecast_publication
+         version = snapshot["case_version"] if input_version is None else input_version
+         start_date = start_date or self._instant(now).astimezone(ZoneInfo(snapshot["time_zone"])).date().isoformat()
+         prior = copy.deepcopy(snapshot["finance"])
++        from .boundaries import validate_saved_action_scenarios
++        freshness = validate_saved_action_scenarios(snapshot["plan"], snapshot["finance"]["ledger"],
++            input_case_version=snapshot["case_version"], as_of=now,
++            time_zone=snapshot["time_zone"], start_date=start_date)
++        if freshness["state"] != "current":
++            from .finance.forecast import FinanceInputError
++            raise FinanceInputError("$.scenarios", "Saved action quotes require explicit scenario refresh before comparing.")
+         forecasts = compare_financial_scenarios(snapshot["finance"]["ledger"], start_date=start_date,
+                     time_zone=snapshot["time_zone"], input_case_version=version)
+         validate("C08ForecastBundle", forecasts)
+--- a/backend/stillhere/service.py
++++ b/backend/stillhere/service.py
+@@ -541,3 +541,36 @@
+                 return self._result(child_id, "applied", now, snapshot, snapshot["case_version"])
+         except (InvalidInput, ServiceError, sqlite3.Error) as error:
+             return self._failed(child_id, now, error)
++
++    def seed_agent_extension_smoke_costs(self, token, case_id, action_id, date):
++        """Local user-run synthetic fixture API; never register with HTTP or tools.
++
++        The date is an explicit synthetic demonstration assumption. The amount
++        remains unknown. This method provides no public fee/agency claim.
++        """
++        from .planner import set_action_costs
++        with self._transaction() as connection:
++            owner = self._session(connection, token)
++            snapshot = self._snapshot(connection, owner, case_id)
++            if snapshot["household_mode"] != "synthetic":
++                raise ServiceError(403, "synthetic_case_required", "This local fixture is limited to synthetic cases.")
++            validate("Id", action_id)
++            from .contracts import _validate
++            _validate({"type": "string", "format": "date"}, date, "$.date")
++            action = next((item for item in snapshot["plan"]["actions"] if item["id"] == action_id), None)
++            if action is None:
++                raise InvalidInput("$.action_id", "Select the scoped synthetic action.")
++            update = {"action_id": action_id, "rule_id": action["rule_id"], "rule_version": action["rule_version"],
++                      "items": [{"id": "synthetic_unknown_fee", "category": "documents", "essential": False,
++                                 "amount_cents": None, "date": date, "due_at": None, "state": "unknown",
++                                 "observed_at": None, "source_ids": []}]}
++            now = self.clock()
++            transition = {"type": "synthetic.action_costs", "update": update}
++            event_id = "smoke_fixture_" + self._fingerprint([case_id, transition])[:40]
++            if connection.execute("SELECT 1 FROM events WHERE case_id=? AND event_id=?", (case_id, event_id)).fetchone():
++                return snapshot
++            before = canonical_json(snapshot)
++            snapshot["plan"] = set_action_costs(snapshot["plan"], [update], as_of=now)
++            snapshot["plan"]["version"] += 1
++            result = self._commit_derived(connection, snapshot, before, event_id, transition, now)
++            return result["case_snapshot"]
+--- a/contracts/case-service.schema.json
++++ b/contracts/case-service.schema.json
+@@ -4600,6 +4600,105 @@
+             "current",
+             "stale"
+           ]
++        },
++        "cost_items": {
++          "type": "array",
++          "maxItems": 16,
++          "items": {
++            "type": "object",
++            "additionalProperties": false,
++            "required": [
++              "id",
++              "category",
++              "amount_cents",
++              "date",
++              "due_at",
++              "state",
++              "observed_at",
++              "source_ids",
++              "essential"
++            ],
++            "properties": {
++              "id": {
++                "type": "string",
++                "minLength": 1,
++                "maxLength": 128
++              },
++              "category": {
++                "type": "string",
++                "minLength": 1,
++                "maxLength": 80
++              },
++              "amount_cents": {
++                "anyOf": [
++                  {
++                    "type": "integer",
++                    "minimum": 0
++                  },
++                  {
++                    "type": "null"
++                  }
++                ]
++              },
++              "date": {
++                "anyOf": [
++                  {
++                    "type": "string",
++                    "format": "date",
++                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
++                  },
++                  {
++                    "type": "null"
++                  }
++                ]
++              },
++              "due_at": {
++                "anyOf": [
++                  {
++                    "type": "string",
++                    "format": "date-time",
++                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
++                  },
++                  {
++                    "type": "null"
++                  }
++                ]
++              },
++              "state": {
++                "enum": [
++                  "unknown",
++                  "user_reported",
++                  "source_supported",
++                  "conflicting",
++                  "stale"
++                ]
++              },
++              "observed_at": {
++                "anyOf": [
++                  {
++                    "type": "string",
++                    "format": "date-time",
++                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|\\+00:00)$"
++                  },
++                  {
++                    "type": "null"
++                  }
++                ]
++              },
++              "source_ids": {
++                "type": "array",
++                "maxItems": 8,
++                "items": {
++                  "type": "string",
++                  "minLength": 1,
++                  "maxLength": 128
++                }
++              },
++              "essential": {
++                "type": "boolean"
++              }
++            }
++          }
+         }
+       }
+     },

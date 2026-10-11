@@ -75,7 +75,7 @@ class HTTPTests(unittest.TestCase):
         status, rejected, _ = self.request("POST", "/v1/commands", command)
         self.assertEqual(status, 401)
         self.assertIsNone(rejected["case_snapshot"])
-        self.assertEqual(self.request("GET", "/health")[1]["implemented_commands"], ["fact.correct", "intake.submit", "conversation.message"])
+        self.assertEqual(self.request("GET", "/health")[1]["implemented_commands"], ["fact.correct", "intake.submit", "conversation.message", "task.update"])
 
     def test_malformed_json_and_self_assigned_roles_are_rejected(self):
         for raw in ('{"role":"operator"}', '{"role":null,"role":"system"}', '{"amount":NaN}', '[]', '{'):

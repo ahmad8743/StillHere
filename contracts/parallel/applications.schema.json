@@ -1,0 +1,1157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "applications.schema.json",
+  "title": "Proposed bounded C06 domain contracts; not registered public payloads",
+  "$defs": {
+    "Stage": {
+      "enum": [
+        "draft",
+        "ready_to_submit",
+        "submitted",
+        "under_review",
+        "needs_evidence",
+        "approved",
+        "denied",
+        "withdrawn"
+      ]
+    },
+    "EvidenceState": {
+      "enum": [
+        "available",
+        "missing",
+        "unknown",
+        "conflicting",
+        "stale"
+      ]
+    },
+    "PrepareApplicationArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "application_id",
+        "action_id",
+        "program_id",
+        "rule_version",
+        "path_id"
+      ],
+      "properties": {
+        "application_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "action_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "program_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 80
+        },
+        "rule_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "path_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        }
+      }
+    },
+    "StageChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "corrects_event_id"
+      ],
+      "properties": {
+        "stage": {
+          "$ref": "#/$defs/Stage"
+        },
+        "corrects_event_id": {
+          "anyOf": [
+            {
+              "$ref": "../case-service.schema.json#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "CorrespondenceInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "evidence_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "receipt_notice",
+            "evidence_request",
+            "decision_notice",
+            "other"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "EvidenceChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "state"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "state": {
+          "$ref": "#/$defs/EvidenceState"
+        }
+      }
+    },
+    "UpdateApplicationArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "application_id"
+      ],
+      "properties": {
+        "application_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "stage_change": {
+          "$ref": "#/$defs/StageChange"
+        },
+        "correspondence": {
+          "$ref": "#/$defs/CorrespondenceInput"
+        },
+        "evidence_changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceChange"
+          },
+          "maxItems": 16,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "EvidenceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "requirement_key",
+        "state",
+        "provenance",
+        "observed_at",
+        "source_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "requirement_key": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "maxLength": 80
+        },
+        "state": {
+          "$ref": "#/$defs/EvidenceState"
+        },
+        "provenance": {
+          "enum": [
+            "user_reported",
+            "source_supported",
+            "unknown",
+            "conflicting",
+            "stale"
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "$ref": "../case-service.schema.json#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "SelectedAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "program_id",
+        "rule_id",
+        "rule_version",
+        "path_id",
+        "status",
+        "is_current",
+        "input_freshness"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "program_id": {
+          "type": "string"
+        },
+        "rule_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "rule_version": {
+          "type": "string"
+        },
+        "path_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "blocked",
+            "waiting",
+            "completed",
+            "skipped"
+          ]
+        },
+        "is_current": {
+          "type": "boolean"
+        },
+        "input_freshness": {
+          "enum": [
+            "current",
+            "stale"
+          ]
+        }
+      }
+    },
+    "AuthorizedApplicationSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "case_id",
+        "case_version",
+        "facts",
+        "evidence",
+        "plan",
+        "applications",
+        "sources"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "case_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "facts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "../case-service.schema.json#/$defs/Fact"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRecord"
+          },
+          "maxItems": 64,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "plan": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "actions"
+          ],
+          "properties": {
+            "actions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/SelectedAction"
+              },
+              "maxItems": 32,
+              "minItems": 0,
+              "uniqueItems": true
+            }
+          }
+        },
+        "applications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationRecord"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "../case-service.schema.json#/$defs/Id"
+              }
+            }
+          },
+          "maxItems": 64,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "AgencyReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "case_id",
+        "application_id",
+        "program_id",
+        "stage",
+        "observed_at",
+        "verified_at",
+        "source_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "case_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "application_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "program_id": {
+          "type": "string"
+        },
+        "stage": {
+          "enum": [
+            "received",
+            "under_review",
+            "needs_evidence",
+            "approved",
+            "denied",
+            "withdrawn"
+          ]
+        },
+        "observed_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "verified_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "ChecklistItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "operator",
+        "children",
+        "requirement",
+        "state",
+        "provenance",
+        "observed_at",
+        "fact_key",
+        "evidence_ids",
+        "source_ids"
+      ],
+      "properties": {
+        "node_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "operator": {
+          "enum": [
+            "all_of",
+            "any_of",
+            "requirement"
+          ]
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "requirement": {
+          "anyOf": [
+            {
+              "$ref": "../case-service.schema.json#/$defs/RuleRequirement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "enum": [
+            "satisfied",
+            "missing",
+            "unknown",
+            "conflicting",
+            "stale"
+          ]
+        },
+        "provenance": {
+          "enum": [
+            "user_reported",
+            "source_supported",
+            "unknown",
+            "conflicting",
+            "stale"
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "$ref": "../case-service.schema.json#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fact_key": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "DraftAnswer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_id",
+        "fact_key",
+        "label",
+        "answer",
+        "state",
+        "observed_at",
+        "evidence_ids",
+        "source_ids"
+      ],
+      "properties": {
+        "node_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "fact_key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 180
+        },
+        "answer": {
+          "enum": [
+            "",
+            "Yes",
+            "No"
+          ]
+        },
+        "state": {
+          "enum": [
+            "user_reported",
+            "source_supported",
+            "unknown",
+            "conflicting",
+            "stale"
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "$ref": "../case-service.schema.json#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "ScriptLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "text",
+        "node_ids",
+        "source_ids"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "opening",
+            "question",
+            "review"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "node_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "StageReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "event_id",
+        "observed_at",
+        "received_at",
+        "provenance",
+        "corrects_event_id"
+      ],
+      "properties": {
+        "stage": {
+          "$ref": "#/$defs/Stage"
+        },
+        "event_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "observed_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "received_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "provenance": {
+          "enum": [
+            "user_reported"
+          ]
+        },
+        "corrects_event_id": {
+          "anyOf": [
+            {
+              "$ref": "../case-service.schema.json#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "CorrespondenceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "evidence_ids",
+        "event_id",
+        "observed_at",
+        "received_at",
+        "provenance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "receipt_notice",
+            "evidence_request",
+            "decision_notice",
+            "other"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "event_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "observed_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "received_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "provenance": {
+          "enum": [
+            "user_reported"
+          ]
+        }
+      }
+    },
+    "ApplicationHistoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "observed_at",
+        "received_at",
+        "stage_change",
+        "correspondence_id",
+        "evidence_changes"
+      ],
+      "properties": {
+        "event_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "observed_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "received_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "stage_change": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StageReport"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "correspondence_id": {
+          "anyOf": [
+            {
+              "$ref": "../case-service.schema.json#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceChange"
+          },
+          "maxItems": 16,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "NextStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "message",
+        "node_ids",
+        "evidence_ids",
+        "source_ids",
+        "basis"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "confirm_requirements",
+            "clarify_evidence",
+            "gather_evidence",
+            "review_draft",
+            "check_reported_status",
+            "review_correspondence",
+            "review_agency_decision",
+            "clarify_stage",
+            "check_agency_status"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "node_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "basis": {
+          "enum": [
+            "preparation",
+            "user_reported",
+            "agency_supported"
+          ]
+        }
+      }
+    },
+    "ApplicationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "action_id",
+        "program_id",
+        "rule_id",
+        "rule_version",
+        "path_id",
+        "root_id",
+        "official_url",
+        "input_case_version",
+        "prepared_at",
+        "preparation_state",
+        "stage_report",
+        "agency_outcome",
+        "checklist",
+        "draft_answers",
+        "call_script",
+        "correspondence",
+        "history",
+        "next_step",
+        "source_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "action_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "program_id": {
+          "type": "string"
+        },
+        "rule_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "rule_version": {
+          "type": "string"
+        },
+        "path_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "root_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "official_url": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "prepared_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "preparation_state": {
+          "enum": [
+            "provisional",
+            "pending"
+          ]
+        },
+        "stage_report": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StageReport"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "agency_outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgencyReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "checklist": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ChecklistItem"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "draft_answers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DraftAnswer"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "call_script": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScriptLine"
+          },
+          "maxItems": 40,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "correspondence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CorrespondenceRecord"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "history": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationHistoryEntry"
+          },
+          "maxItems": 64,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "next_step": {
+          "$ref": "#/$defs/NextStep"
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "PrepareApplicationInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshot",
+        "arguments",
+        "rule_result",
+        "prepared_at",
+        "agency_receipts"
+      ],
+      "properties": {
+        "snapshot": {
+          "$ref": "#/$defs/AuthorizedApplicationSnapshot"
+        },
+        "arguments": {
+          "$ref": "#/$defs/PrepareApplicationArguments"
+        },
+        "rule_result": {
+          "$ref": "../case-service.schema.json#/$defs/ProgramRuleResult"
+        },
+        "prepared_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "agency_receipts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgencyReceipt"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "UpdateApplicationInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshot",
+        "arguments",
+        "rule_result",
+        "event_id",
+        "occurred_at",
+        "received_at",
+        "agency_receipts"
+      ],
+      "properties": {
+        "snapshot": {
+          "$ref": "#/$defs/AuthorizedApplicationSnapshot"
+        },
+        "arguments": {
+          "$ref": "#/$defs/UpdateApplicationArguments"
+        },
+        "rule_result": {
+          "$ref": "../case-service.schema.json#/$defs/ProgramRuleResult"
+        },
+        "event_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "occurred_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "received_at": {
+          "$ref": "../case-service.schema.json#/$defs/Instant"
+        },
+        "agency_receipts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AgencyReceipt"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      }
+    },
+    "ApplicationPreparationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "application",
+        "sources",
+        "household_eligibility",
+        "external_submission"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "application": {
+          "$ref": "#/$defs/ApplicationRecord"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/ProgramRuleSource"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "household_eligibility": {
+          "enum": [
+            "unknown"
+          ]
+        },
+        "external_submission": {
+          "enum": [
+            false
+          ]
+        }
+      }
+    },
+    "ApplicationUpdateResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "event_id",
+        "application",
+        "evidence",
+        "changed_evidence_ids",
+        "sources",
+        "requires_plan_reassessment",
+        "household_eligibility",
+        "external_submission"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "event_id": {
+          "$ref": "../case-service.schema.json#/$defs/Id"
+        },
+        "application": {
+          "$ref": "#/$defs/ApplicationRecord"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceRecord"
+          },
+          "maxItems": 64,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "changed_evidence_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/Id"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "../case-service.schema.json#/$defs/ProgramRuleSource"
+          },
+          "maxItems": 32,
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "requires_plan_reassessment": {
+          "type": "boolean"
+        },
+        "household_eligibility": {
+          "enum": [
+            "unknown"
+          ]
+        },
+        "external_submission": {
+          "enum": [
+            false
+          ]
+        }
+      }
+    }
+  }
+}

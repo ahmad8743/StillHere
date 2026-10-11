@@ -1,0 +1,230 @@
+--- a/backend/stillhere/integration.py
++++ b/backend/stillhere/integration.py
+@@ -55,12 +55,21 @@
+             caller = Authority(snapshot["case_id"], "household", "household_" + owner[:32], permissions, True)
+             return self._apply_check_in_command(connection, snapshot, command, now, caller), None
+         if command["type"] == "application.update":
+-            from .applications import update_application
++            from .boundaries import update_application_boundary
++            from .service import ServiceError
+             application = next((item for item in snapshot["applications"] if item["id"] == command["payload"]["application_id"]), None)
+             if application is None:
+                 raise InvalidInput("$.application_id", "Select a saved application in this case.")
+-            rules = self._application_rules(snapshot, application["program_id"], application["rule_version"], now)
+-            proposal = update_application(snapshot, command["payload"], rules, event_id=command["event_id"], occurred_at=command["occurred_at"], received_at=now)
++            try:
++                rules = self._application_rules(snapshot, application["program_id"], application["rule_version"], now)
++            except ServiceError as error:
++                if error.issue["code"] != "application_rules_unavailable":
++                    raise
++                rules = None
++            # A source outage cannot suppress an explicit household stage report.
++            # Evidence edits still require current path validation; do not guess.
++            proposal = update_application_boundary(snapshot, command["payload"], rules,
++                event_id=command["event_id"], occurred_at=command["occurred_at"], received_at=now)
+             snapshot["applications"] = [proposal["application"] if item["id"] == application["id"] else item for item in snapshot["applications"]]
+             snapshot["evidence"] = proposal["evidence"]
+             if command["payload"].get("evidence_changes"):
+@@ -108,7 +117,7 @@
+         validate("C08ForecastBundle", forecasts)
+         published = prepare_forecast_publication(forecasts, current_case_version=version, computed_at=now, publication_event_id=event_id)
+         validate("C08CurrentFinance", published["proposed_finance"])
+-        reassessment = finance_reassessment(prior if prior.get("baseline") else None, forecasts, changed_record_ids=changed_ids)
++        reassessment = finance_reassessment(prior if prior.get("baseline") else None, forecasts, changed_record_ids=list(changed_ids))
+         validate("C08FinanceReassessment", reassessment)
+         snapshot["finance"] = {**published["proposed_finance"], "ledger": snapshot["finance"]["ledger"], "reassessment": reassessment}
+         if reassessment["required"] and snapshot["plan"]["state"] != "not_requested":
+@@ -127,6 +136,14 @@
+ 
+     def _init_integration(self, connection):
+         connection.executescript("""
++            CREATE TABLE IF NOT EXISTS access_audit (
++                id INTEGER PRIMARY KEY,
++                operator_id TEXT NOT NULL,
++                case_id TEXT,
++                operation TEXT NOT NULL,
++                received_at TEXT NOT NULL,
++                outcome TEXT NOT NULL
++            );
+             CREATE TABLE IF NOT EXISTS operators (
+                 token_digest TEXT PRIMARY KEY, operator_id TEXT NOT NULL UNIQUE,
+                 created_at TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1
+@@ -315,7 +332,7 @@
+                     snapshot["dashboard_output"] = {key: proposed[key] for key in ("input_case_version", "prepared_at", "component_states")}
+                 elif operation == "finance.calculate":
+                     validate("ForecastToolArguments", arguments)
+-                    self._refresh_finance(snapshot, now, event_id, start_date=arguments.get("start_date"))
++                    self._refresh_finance(snapshot, now, event_id, start_date=arguments.get("start_date"), input_version=snapshot["case_version"]+1)
+                 else:
+                     raise ServiceError(400, "tool_forbidden", "Derived operation is outside the household allowlist.")
+                 # Check compact output before committing any effect.
+@@ -361,8 +378,26 @@
+         return output
+ 
+     def read_operator_queue(self, token, case_id=None):
++        from .service import ServiceError
++        try:
++            return self._read_operator_queue_audited(token, case_id)
++        except ServiceError as error:
++            try:
++                with self._transaction() as connection:
++                    digest = hashlib.sha256(token.encode()).hexdigest() if isinstance(token, str) and len(token) <= 128 else None
++                    actor = connection.execute("SELECT operator_id FROM operators WHERE token_digest=?", (digest,)).fetchone()
++                    # Never retain the bearer, volunteered messages, or attempted raw URL.
++                    connection.execute("INSERT INTO access_audit(operator_id,case_id,operation,received_at,outcome) VALUES(?,?,?,?,?)",
++                        (actor["operator_id"] if actor else "unverified", None, "read_operator_projection", self.clock(), error.issue["code"]))
++            except sqlite3.Error:
++                raise ServiceError(503, "storage_unavailable", "Audited operator access is unavailable.", True) from None
++            raise
++        except sqlite3.Error:
++            raise ServiceError(503, "storage_unavailable", "Audited operator access is unavailable.", True) from None
++
++    def _read_operator_queue_audited(self, token, case_id=None):
+         from .check_ins import operator_projection
+-        with self._connection() as connection:
++        with self._transaction() as connection:
+             digest = self._operator(connection, token)
+             case_ids = ([case_id] if case_id is not None else [row["case_id"] for row in connection.execute(
+                 "SELECT case_id FROM operator_scopes WHERE token_digest=? ORDER BY case_id", (digest,))])
+@@ -373,6 +408,8 @@
+                 view = operator_projection(self._check_in_state(connection, identifier), caller=caller, now=self.clock(), relevant_needs=snapshot["needs"])
+                 view.update(contract_version=VERSION, case_version=snapshot["case_version"])
+                 projections.append(view)
++                connection.execute("INSERT INTO access_audit(operator_id,case_id,operation,received_at,outcome) VALUES(?,?,?,?,?)",
++                    (caller.subject_id, identifier, "read_operator_projection", self.clock(), "granted"))
+             return {"contract_version": VERSION, "cases": projections, "simulation": True}
+ 
+     def execute_operator(self, token, command):
+--- a/backend/stillhere/planner/service.py
++++ b/backend/stillhere/planner/service.py
+@@ -36,7 +36,16 @@
+                 except (OSError, ValueError, TypeError, RecursionError):
+                     return self._result(child_id, "unavailable", now, snapshot, issue={"code": "plan_rules_unresolved",
+                         "message": "Published rules could not be read or validated; the previous plan is retained.", "retryable": True})
+-                identity = [arguments, snapshot["facts"], tasks, catalog["version"]]
++                # Domain-input generations survive our own plan/chat commits.
++                # A repeated unchanged report still invalidates derived records;
++                # it must not collide with the earlier revision's replay identity.
++                input_generation = connection.execute(
++                    "SELECT COALESCE(MAX(applied_version),0) FROM events WHERE case_id=? "
++                    "AND json_extract(command_json,'$.type') IN "
++                    "('fact.correct','intake.submit','task.update','application.update',"
++                    "'finance.update','scenario.set','planner.inputs')",
++                    (case_id,)).fetchone()[0]
++                identity = [arguments, snapshot["facts"], tasks, catalog["version"], input_generation]
+                 child_id = "agent_tool_" + self._fingerprint([case_id, parent_event_id, "plan.revise", identity])[:48]
+                 existing = connection.execute("SELECT applied_version FROM events WHERE case_id=? AND event_id=?", (case_id, child_id)).fetchone()
+                 if existing:
+--- a/backend/stillhere/commands.py
++++ b/backend/stillhere/commands.py
+@@ -3,7 +3,7 @@
+ import copy
+ import hashlib
+ 
+-from .contracts import validate
++from .contracts import InvalidInput, validate
+ 
+ 
+ def user_fact(value, observed_at):
+@@ -96,6 +96,21 @@
+ 
+ def validate_payload(command_type, payload):
+     validate(COMMAND_HANDLERS[command_type][0], payload)
++    if command_type == "finance.update":
++        reserved = {"origin", "planner_cost_id", "planner_commitment_id", "rule_id",
++                    "rule_version", "actual_event_ids", "verification_state"}
++        def reject_reserved(value, depth=0):
++            if depth > 8:
++                raise InvalidInput("$.payload", "Financial metadata exceeds the bounded depth.")
++            if isinstance(value, dict):
++                if reserved & value.keys():
++                    raise InvalidInput("$.payload", "Backend ownership and verification fields cannot be household financial input.")
++                for child in value.values():
++                    reject_reserved(child, depth+1)
++            elif isinstance(value, list):
++                for child in value:
++                    reject_reserved(child, depth+1)
++        reject_reserved(payload)
+ 
+ 
+ def apply_command(snapshot, command, received_at):
+@@ -117,6 +132,11 @@
+     updated["updated_at"] = received_at
+     changed_inputs = ({command["payload"]["fact_key"]} if command["type"] == "fact.correct"
+                       else set(command["payload"]) if command["type"] == "intake.submit" else set())
++    if changed_inputs and updated["applications"]:
++        from .boundaries import invalidate_applications
++        invalidation = invalidate_applications(updated,
++            target_case_version=updated["case_version"], changed_fact_keys=sorted(changed_inputs))
++        updated["applications"] = invalidation["applications"]
+     resources = updated["resources"]
+     search = resources.get("search")
+     if search and changed_inputs & {search["query"]["location_scope"] + "_location", "requested_needs", "needs"}:
+--- a/backend/stillhere/service.py
++++ b/backend/stillhere/service.py
+@@ -192,11 +192,22 @@
+ 
+     def read_case(self, token, case_id, contract_version=VERSION):
+         try:
+-            with self._connection() as connection:
++            # Resume exposes expired interrupted work through the existing
++            # audited terminal transition, without restarting provider effects.
++            with self._transaction() as connection:
+                 owner = self._session(connection, token)
+                 if contract_version != VERSION:
+                     raise ServiceError(400, "unsupported_contract", "Read requests require contract version 0.1.")
+-                return self._snapshot(connection, owner, case_id)
++                snapshot = self._snapshot(connection, owner, case_id)
++                self._expire_agent_runs(connection, snapshot, self.clock())
++                if "dashboard_output" in snapshot:
++                    from .outputs import prepare_dashboard_publication
++                    refreshed = prepare_dashboard_publication(snapshot,
++                        {"components": snapshot["components"]}, now=self.clock())
++                    # Read projection only: retain the original publication identity
++                    # and input time; derive changing source/record display states.
++                    snapshot["dashboard_output"]["component_states"] = refreshed["component_states"]
++                return snapshot
+         except sqlite3.Error:
+             raise ServiceError(503, "storage_unavailable", "Case storage is unavailable.", True) from None
+ 
+@@ -246,6 +257,10 @@
+             or any(turn["id"] == command["payload"]["message_id"] for turn in snapshot["conversation"]["turns"])
+         ):
+             raise ServiceError(400, "message_id_reused", "Changed or repeated message identity requires the original event_id.")
++        if command["type"] == "conversation.message":
++            payload = command["payload"]
++            if any(key in payload for key in ("choice_id", "choice_ids")) and not {"reply_to_turn_id", "question_id"} <= payload.keys():
++                raise InvalidInput("$.payload.question_id", "Choice answers require the exact complete saved turn and question.")
+         before_case = canonical_json(snapshot)
+         before = snapshot["facts"].get(command["payload"]["fact_key"]) if command["type"] == "fact.correct" else None
+         if command["type"] in SERVICE_COMMANDS:
+--- a/tests/test_case_service.py
++++ b/tests/test_case_service.py
+@@ -146,7 +146,11 @@
+     def test_correction_retains_completed_work_and_marks_old_results_pending(self):
+         snapshot = copy.deepcopy(self.snapshot)
+         snapshot["plan"].update(state="ready", version=1, actions=[{"id": "done", "status": "completed"}])
+-        snapshot["finance"].update(state="calculated", baseline={"input_case_version": 1}, computed_at=NOW)
++        from backend.stillhere.finance import forecast_finances
++        forecast = forecast_finances(snapshot["finance"]["ledger"],
++                    start_date=NOW[:10], time_zone=snapshot["time_zone"], input_case_version=1)
++        snapshot["finance"].update(state="calculated", input_case_version=1,
++                                  baseline=forecast["baseline"], computed_at=NOW)
+         with closing(sqlite3.connect(self.path)) as connection, connection:
+             connection.execute("UPDATE cases SET snapshot_json=? WHERE case_id=?", (json.dumps(snapshot), self.case_id))
+         updated = self.service.execute(self.token, self.command())["case_snapshot"]
+--- a/tests/test_intake.py
++++ b/tests/test_intake.py
+@@ -95,7 +95,11 @@
+         shelter_id = first["needs"][0]["id"]
+         first["needs"][0]["state"] = "covered"
+         first["plan"].update(state="ready", version=1, actions=[{"id": "done", "status": "completed"}])
+-        first["finance"].update(state="calculated", input_case_version=2, baseline={"input_case_version": 2}, computed_at=NOW)
++        from backend.stillhere.finance import forecast_finances
++        forecast = forecast_finances(first["finance"]["ledger"],
++                    start_date=NOW[:10], time_zone=first["time_zone"], input_case_version=2)
++        first["finance"].update(state="calculated", input_case_version=2,
++                                  baseline=forecast["baseline"], computed_at=NOW)
+         with closing(sqlite3.connect(self.path)) as connection, connection:
+             connection.execute("UPDATE cases SET snapshot_json=? WHERE case_id=?", (json.dumps(first), self.snapshot["case_id"]))
+         updated = self.service.execute(self.token, self.command({"needs": ["food_water"]}, "more", 2))["case_snapshot"]

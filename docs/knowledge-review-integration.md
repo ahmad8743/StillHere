@@ -198,12 +198,13 @@ assertions establish fresh useful public text, quoted/cited saved reply,
 unchanged household domains/published rules and replay without refetch.
 
 This verifies the requested live-fetch example. It does not approve policy or
-verify Colorado candidate extraction. C05 remains NOT_STARTED and is the next
-implementation component; this fetch prerequisite is satisfied.
+verify Colorado candidate extraction. C05 is now IN_PROGRESS with its first
+read-only evaluation slice READY_FOR_INTEGRATION; this fetch prerequisite is
+satisfied. [Planner handoff](planner-integration.md).
 
 ## Validation and remaining user checks
 
-All 203 current non-HTTP checks pass, including 24 referral, 28 rule,
+At the C04 fetch-example milestone, all 203 non-HTTP checks passed, including 24 referral, 28 rule,
 34 knowledge, six diagnostic, ten strict fetch-example and 17 real pinned-Strands
 SDK checks. The 67 focused fetch/knowledge/diagnostic/SDK checks also pass. Evidence
 covers malformed/oversized/late sources, hostile arguments, fallback provenance,
@@ -213,9 +214,9 @@ synthetic transports. The credential-free end-to-end workflow also passed, with 
 user-reported terminal pass.
 All publication tests used temporary databases and synthetic evidence.
 
-Current discovery contains 208 checks. The five existing HTTP checks hit this
-host's loopback restriction at the earlier full-suite milestone; all 203 current
-non-HTTP checks pass. No new HTTP handlers were introduced.
+That milestone discovered 208 checks. The five existing HTTP checks hit this
+host's loopback restriction at the earlier full-suite milestone; all 203 milestone
+non-HTTP checks passed. No new HTTP handlers were introduced.
 Direct backend public-page requests currently fail DNS resolution here; browser
 source review passed separately. The user-run national USAGov backend fetch and
 strict model proof now pass; Colorado live candidate extraction is unverified. The earlier user-run rules/resources smokes passed at 14.992/18.535
@@ -231,7 +232,7 @@ Codex-host DNS failure cannot establish the cause of this user-run failure.
 Run from the repository root:
 
 ```sh
-# Current full local suite: 208 checks, including new fetch-example checks and five HTTP checks
+# Full local suite, including subsequent C05/finance checks and five HTTP checks
 .venv/bin/python -W error::ResourceWarning -m unittest discover -s tests -q
 
 # Disposable, credential-free fetch through manual publication/restart/replay
@@ -250,8 +251,10 @@ submission; `unavailable` proves source-failure handling and discrepancy
 submission, with successful extraction still pending. Codex does not run the
 credential-dependent command or read private configuration.
 
-The successful live-fetch prerequisite is satisfied. The next implementation
-component is C05's deterministic prerequisite/constraint planner. Shared boundary
+The successful live-fetch prerequisite is satisfied. C05's first deterministic
+read-only evaluation slice is now READY_FOR_INTEGRATION; full C05 remains
+IN_PROGRESS for deeper evidence/dependency and cost integration; plan/task
+slices are now ready independently. Shared boundary
 review and the remaining verification gates are tracked separately. Broader policy coverage,
 service capacity, deployed operator access, UI integration and deployment remain
 separate work. C04 is ready for integration, not marked integrated or fully
@@ -302,4 +305,24 @@ Six new diagnostic tests cover HTTP status, DNS/TLS/timeout/connection categorie
 success counts, invalid content, bounded/approved inputs and CLI exit status,
 with private fixture text excluded from output. All 66 focused diagnostic,
 knowledge and agent checks passed; these used synthetic transports and temporary
-storage. Test discovery now contains 197 checks. The earlier 186 non-HTTP checks remain the previous iteration's evidence.
+storage. That diagnostic milestone contained 197 checks. The earlier 186 non-HTTP checks remain the previous iteration's evidence.
+
+At the C05 milestone, 28 planner and two additional real-SDK checks pass; the
+focused planner/rule/SDK run passes 75. Later shared discovery runs 295 checks:
+290 pass, including 57 concurrent finance checks and 19 total real-SDK checks;
+the same five HTTP checks hit host-prohibited loopback binding. These totals
+supersede the historical 203/208 counts above. C05 consumes only reviewed
+published active/exact archived rules, with no fetch, review submission,
+publication or household-domain writes. Colorado live extraction remains
+unverified; neither the national fetch proof nor household Boolean reports
+establish eligibility. The live planner proof is a separate user-run check in
+the [C05 handoff](planner-integration.md).
+
+C05 has now added CaseService saved-plan revisions and explicit task reports as
+two separate READY_FOR_INTEGRATION slices. Only published rules are consumed;
+planning/task effects cannot submit candidates, publish policy or turn household
+completion into agency approval. Current validation is 108 focused checks and
+325 passing non-HTTP checks among 330 discovered; five existing HTTP checks and
+live `--planner`/`--plan` proofs remain pending. See the updated
+[C05 handoff](planner-integration.md) for independent flags, compact model summaries,
+preserved source/history/freshness and user-run checks.

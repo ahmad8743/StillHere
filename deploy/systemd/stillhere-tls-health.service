@@ -1,0 +1,16 @@
+[Unit]
+Description=StillHere trusted IP TLS expiry and health check
+
+[Service]
+Type=oneshot
+User=caddy
+Group=caddy
+ExecStart=/usr/bin/python3 /opt/stillhere/current/deploy/verify_tls.py
+TimeoutStartSec=30s
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+LimitCORE=0

@@ -1,0 +1,11 @@
+[Unit]
+Description=StillHere hourly backup schedule
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=60
+Unit=stillhere-backup.service
+
+[Install]
+WantedBy=timers.target

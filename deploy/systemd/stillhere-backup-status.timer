@@ -1,0 +1,10 @@
+[Unit]
+Description=StillHere backup age and capacity schedule
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Unit=stillhere-backup-status.service
+
+[Install]
+WantedBy=timers.target

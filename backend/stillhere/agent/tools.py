@@ -80,6 +80,39 @@ def submit_intake(context, arguments):
     return _write(context, "intake.submit", arguments["selections"])
 
 
+def update_task(context, arguments):
+    from ..planner.summaries import mutation_summary
+    expected = context.expected_version
+    result = _write(context, "task.update", arguments)
+    _check_replayed_version(context, result, expected)
+    return mutation_summary(result)
+
+
+def _check_replayed_version(context, result, expected):
+    if result["status"] == "already_applied":
+        if result["case_snapshot"]["case_version"] != expected:
+            context.writes_conflicted = True
+            result["issues"].append({"code": "version_conflict", "message": "The original effect remains saved, but a concurrent case change needs reconciliation before another write.", "retryable": False})
+        context.expected_version = expected
+
+
+def revise_recovery_plan(context, arguments):
+    if context.writes_conflicted:
+        raise AgentFailure("version_conflict", "Reconcile the concurrent change before revising the plan.")
+    expected = context.expected_version
+    result = context.service.revise_agent_plan(context.token, context.case_id, context.event_id, context.run_id,
+        arguments, context.expected_version, context.deadline, context.max_result_chars)
+    if result["status"] == "conflict":
+        context.writes_conflicted = True
+    elif result["status"] == "applied":
+        context.expected_version = result["case_snapshot"]["case_version"]
+    _check_replayed_version(context, result, expected)
+    if any(issue["code"] == "agent_timeout" for issue in result["issues"]):
+        context.terminal_issue = next(issue for issue in result["issues"] if issue["code"] == "agent_timeout")
+    from ..planner.summaries import mutation_summary
+    return mutation_summary(result)
+
+
 def get_incident_context(context, arguments):
     from ..contracts import canonical_json
     from ..incidents import build_query, query_identity
@@ -176,6 +209,39 @@ def retrieve_program_rules(context, arguments):
 
 def failure(issue):
     return {"contract_version": VERSION, "error": issue}
+
+
+def evaluate_recovery_options(context, arguments):
+    from ..contracts import InvalidInput
+    from ..knowledge import build_query
+    from ..knowledge.rules import notice, validate_result
+    from ..planner import evaluate_options
+    if context.writes_conflicted:
+        raise AgentFailure("version_conflict", "Reconcile the concurrent case change before evaluating recovery options.")
+    if context.rule_store is None:
+        raise AgentFailure("tool_forbidden", "Recovery option evaluation is not enabled.")
+    snapshot = read_case(context, {})
+    query = build_query(snapshot, arguments, context.service.clock())
+    try:
+        rules = context.rule_store.lookup(query, context.deadline)
+    except TimeoutError:
+        error = AgentFailure("agent_timeout", "Recovery evaluation reached the agent time limit.")
+        context.terminal_issue = error.issue
+        raise error from None
+    validate_result(rules)
+    if rules["query"] != query:
+        raise InvalidInput("$.query", "Planner results must use the backend's exact scoped rule query.")
+    result = evaluate_options(snapshot, rules)
+    latest = context.service.read_case(context.token, context.case_id)
+    if time.monotonic() >= context.deadline:
+        error = AgentFailure("agent_timeout", "Recovery evaluation reached the agent time limit; late options were discarded.")
+        context.terminal_issue = error.issue
+        raise error
+    if latest["case_version"] != snapshot["case_version"]:
+        context.writes_conflicted = True
+        result.update(state="conflict", options=[], sources=[], blockers=[], questions=[],
+                      notices=[notice("version_conflict", "Case inputs changed during evaluation. Discard these options and reconcile before another scoped lookup or change.")])
+    return result
 
 
 def fetch_official_source(context, arguments):

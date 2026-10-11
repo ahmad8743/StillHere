@@ -1,0 +1,402 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "domain-boundaries.schema.json",
+  "title": "Proposed deterministic cross-domain boundaries; integration-owner review required",
+  "description": "Shape alone grants no authority. CaseService validates/recomputes inside its transaction and owns all durable writes. Trusted selection is a Python backend capability, never a JSON payload.",
+  "$defs": {
+    "Id": {
+      "$ref": "planner.schema.json#/$defs/Id"
+    },
+    "Version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "PlanVersion": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "Ids": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "$ref": "#/$defs/Id"
+      },
+      "uniqueItems": true
+    },
+    "BoundaryIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "action_not_selectable",
+            "mutually_exclusive_alternatives",
+            "protected_commitment_requires_reconciliation",
+            "overlapping_replacement",
+            "cost_date_unknown",
+            "cost_timing_requires_reassessment",
+            "selected_commitment_requires_reconciliation",
+            "planner_cost_binding_requires_review"
+          ]
+        },
+        "record_id": {
+          "$ref": "#/$defs/Id"
+        }
+      },
+      "required": [
+        "code",
+        "record_id"
+      ]
+    },
+    "CostReconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "plan_version": {
+          "$ref": "#/$defs/PlanVersion"
+        },
+        "hypothetical": {
+          "const": true
+        },
+        "state": {
+          "enum": [
+            "proposed",
+            "needs_clarification"
+          ]
+        },
+        "cost_export": {
+          "$ref": "planner.schema.json#/$defs/PlannerCostExport"
+        },
+        "selected_action_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "retained_commitment_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "remove_commitment_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "action_alternatives": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "finance.schema.json#/$defs/ActionAlternative"
+          }
+        },
+        "comparison_ledger": {
+          "anyOf": [
+            {
+              "$ref": "finance.schema.json#/$defs/FinanceLedger"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issues": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/BoundaryIssue"
+          }
+        }
+      },
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "plan_version",
+        "hypothetical",
+        "state",
+        "cost_export",
+        "selected_action_ids",
+        "retained_commitment_ids",
+        "remove_commitment_ids",
+        "action_alternatives",
+        "comparison_ledger",
+        "issues"
+      ]
+    },
+    "PlannerReassessmentRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "request_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "case_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "plan_version": {
+          "$ref": "#/$defs/PlanVersion"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "changed_record_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "affected_action_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "preserved_action_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "preserve_completed_actions": {
+          "const": true
+        },
+        "forecast": {
+          "$ref": "finance.schema.json#/$defs/ForecastBundle"
+        }
+      },
+      "required": [
+        "contract_version",
+        "request_id",
+        "case_id",
+        "input_case_version",
+        "plan_version",
+        "required",
+        "reasons",
+        "changed_record_ids",
+        "affected_action_ids",
+        "preserved_action_ids",
+        "preserve_completed_actions",
+        "forecast"
+      ]
+    },
+    "CompletionCorrectionProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "plan_version": {
+          "$ref": "#/$defs/PlanVersion"
+        },
+        "target_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "plan": {
+          "$ref": "planner.schema.json#/$defs/PlannerPlan"
+        },
+        "affected_action_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "preserved_action_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "financial_reversal": {
+          "const": false
+        }
+      },
+      "required": [
+        "contract_version",
+        "event_id",
+        "input_case_version",
+        "plan_version",
+        "target_case_version",
+        "plan",
+        "affected_action_ids",
+        "preserved_action_ids",
+        "financial_reversal"
+      ]
+    },
+    "ApplicationInvalidationProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "target_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "applications": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "applications.schema.json#/$defs/ApplicationRecord"
+          }
+        },
+        "affected_application_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "affected_evidence_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "applications.schema.json#/$defs/EvidenceRecord"
+          }
+        },
+        "requires_plan_reassessment": {
+          "type": "boolean"
+        },
+        "household_eligibility": {
+          "const": "unknown"
+        },
+        "external_submission": {
+          "const": false
+        }
+      },
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "target_case_version",
+        "applications",
+        "affected_application_ids",
+        "affected_evidence_ids",
+        "evidence",
+        "requires_plan_reassessment",
+        "household_eligibility",
+        "external_submission"
+      ]
+    },
+    "ApplicationBoundaryResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "application": {
+          "$ref": "applications.schema.json#/$defs/ApplicationRecord"
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "applications.schema.json#/$defs/EvidenceRecord"
+          }
+        },
+        "changed_evidence_ids": {
+          "$ref": "#/$defs/Ids"
+        },
+        "sources": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object"
+          }
+        },
+        "requires_plan_reassessment": {
+          "type": "boolean"
+        },
+        "household_eligibility": {
+          "const": "unknown"
+        },
+        "external_submission": {
+          "const": false
+        },
+        "mode": {
+          "enum": [
+            "report_only",
+            "current_rules"
+          ]
+        },
+        "preparation_refreshed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "event_id",
+        "application",
+        "evidence",
+        "changed_evidence_ids",
+        "sources",
+        "requires_plan_reassessment",
+        "household_eligibility",
+        "external_submission",
+        "mode",
+        "preparation_refreshed"
+      ]
+    },
+    "SavedActionScenarioValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "input_case_version",
+        "plan_version",
+        "state",
+        "issues"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "input_case_version": {
+          "$ref": "#/$defs/Version"
+        },
+        "plan_version": {
+          "$ref": "#/$defs/PlanVersion"
+        },
+        "state": {
+          "enum": [
+            "current",
+            "needs_clarification"
+          ]
+        },
+        "issues": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "record_id"
+            ],
+            "properties": {
+              "code": {
+                "const": "saved_scenario_costs_require_reassessment"
+              },
+              "record_id": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

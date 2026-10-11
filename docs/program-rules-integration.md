@@ -138,7 +138,7 @@ state and an unchanged replay version. Success prints
 running the HTTP server or setting the opt-in flag separately.
 
 New safe `smoke_started` and `smoke_passed` records include an allowlisted mode
-(`default`, `incidents`, `resources`, `rules`, `knowledge`, `fetch`, `access`) in
+(`default`, `incidents`, `resources`, `rules`, `knowledge`, `fetch`, `planner`, `access`) in
 `var/agent-smoke.jsonl`. Find the latest `smoke_started`, then confirm a later
 `smoke_passed` with `mode: "rules"` before the next start. Older logs lack mode;
 the latest historical user-run pass at 20.356 seconds confirms general agent
@@ -152,5 +152,34 @@ proof-options scope, current evidence and remaining user checks. Successful
 national source retrieval is verified through strict `--fetch`; Colorado live
 candidate extraction remains unverified; the
 knowledge failure/discrepancy/reply/replay branch passed live at 13.569 seconds.
-Full policy coverage, prerequisite evaluation, application preparation, UI
+Full policy coverage, deeper dependency planning, application preparation, UI
 integration, shared boundary freeze and deployment remain separate work/gates.
+
+## C05 evaluation consumer — first slice ready
+
+The independent opt-in `evaluate_recovery_options` tool now evaluates these
+published graphs against exact Boolean availability/completion case facts.
+`retrieve_program_rules` itself remains read-only retrieval with unknown household
+evidence states. C05 returns household evaluations separately, with necessary
+AND/OR blockers/questions, every sourced OR branch and sibling path, explicit
+internet/office-transport access checks and null costs. Missing/unknown answers
+remain unknown; cyclic/dangling graphs cannot become usable options. Agency
+confirmation needs trusted source-supported provenance; partial policy keeps
+otherwise satisfied paths provisional and eligibility unknown.
+
+The first C05 slice is READY_FOR_INTEGRATION, with full C05 IN_PROGRESS. 28 planner
+and two new real-SDK checks pass (75 planner/rule/SDK regression checks). The
+shared full discovery later runs 295 checks with 290 passes and the five existing
+HTTP loopback-bind errors; this includes 57 concurrent finance checks left
+untouched. Live Sonnet/planner proof, plan commits/task history and P2 review
+remain pending. Colorado live extraction is still unverified after HTTP 403.
+[Planner handoff and user-run tests](planner-integration.md).
+
+C05 also now provides separate opt-in saved-plan revision and task-report tools.
+CaseService recomputes these published rules within the scoped transaction;
+completed actions retain pinned historical source records, and other programs'
+stale evaluations are not silently refreshed. C04 lookup remains read-only and
+pending candidates still cannot enter planning. Current lifecycle validation
+passes 108 focused and 325 non-HTTP checks among 330 discovered, with five HTTP
+checks pending and the new `--plan` Sonnet proof user-run. Colorado extraction
+remains unverified. [Latest C05 boundary](planner-integration.md).

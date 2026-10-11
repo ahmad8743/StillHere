@@ -20,6 +20,10 @@ class RuleProofRegistry(ToolRegistry):
         super().__init__(definitions)
         self.rule_result = None
         self.public_results = {}
+        self.planner_result = None
+        self.planner_calls = 0
+        self.plan_results = []
+        self.task_results = []
 
     def invoke(self, name, arguments, context):
         result = super().invoke(name, arguments, context)
@@ -27,6 +31,13 @@ class RuleProofRegistry(ToolRegistry):
             self.rule_result = result
         if name in ("fetch_official_source", "propose_rule_candidate", "report_rule_discrepancy") and "error" not in result:
             self.public_results[name] = result
+        if name == "evaluate_recovery_options" and "error" not in result:
+            self.planner_result = result
+            self.planner_calls += 1
+        if name == "revise_recovery_plan" and "error" not in result:
+            self.plan_results.append(result)
+        if name == "update_task" and "error" not in result:
+            self.task_results.append(result)
         return result
 
 
@@ -41,12 +52,14 @@ def main():
     modes.add_argument("--rules", action="store_true", help="Live model/C04 read-only rule proof using an explicit synthetic Colorado document issuer")
     modes.add_argument("--knowledge", action="store_true", help="Live model/C04 official-fetch and unpublished public-review submission proof")
     modes.add_argument("--fetch", action="store_true", help="Strict successful live USAGov fetch, source-backed reply and replay proof; unavailable sources fail")
+    modes.add_argument("--planner", action="store_true", help="Read-only C05 no-car evaluation, sourced alternatives, unknowns, saved reply and replay proof")
+    modes.add_argument("--plan", action="store_true", help="C05 saved plan, user-reported task completion, preserving revision and replay proof")
     parser.add_argument("--expected-account-id", help="With --check-access, privately compare the 12-digit console account ID; never prints or logs it")
     args = parser.parse_args()
     if args.expected_account_id is not None and (not args.check_access or not re.fullmatch(r"[0-9]{12}", args.expected_account_id)):
         parser.error("--expected-account-id requires --check-access and a 12-digit account ID.")
     diagnostics = SafeDiagnostics(args.log_file)
-    mode = "fetch" if args.fetch else "knowledge" if args.knowledge else "rules" if args.rules else "resources" if args.resources else "incidents" if args.incidents else "access" if args.check_access else "default"
+    mode = "plan" if args.plan else "planner" if args.planner else "fetch" if args.fetch else "knowledge" if args.knowledge else "rules" if args.rules else "resources" if args.resources else "incidents" if args.incidents else "access" if args.check_access else "default"
     diagnostics.record("smoke_started", mode=mode)
     print("Safe diagnostic log:", diagnostics.path)
     if args.env_file:
@@ -62,6 +75,14 @@ def main():
         config = replace(config, enable_rule_review=True)
     if args.fetch:
         config = replace(config, enable_official_sources=True, enable_rule_review=False)
+    if args.planner:
+        config = replace(config, enable_planner=True, enable_rules=False, enable_intake=False,
+                         enable_incidents=False, enable_resources=False, enable_official_sources=False, enable_rule_review=False,
+                         enable_plan_revision=False, enable_tasks=False)
+    if args.plan:
+        config = replace(config, enable_plan_revision=True, enable_tasks=True, enable_planner=False, enable_rules=False,
+                         enable_intake=False, enable_incidents=False, enable_resources=False, enable_official_sources=False,
+                         enable_rule_review=False, max_turns=max(6, config.max_turns), max_total_tokens=max(24000, config.max_total_tokens))
     if config.missing_provider_settings:
         record(diagnostics, "config_missing", code="agent_not_configured")
         print("Live proof incomplete: agent_not_configured")
@@ -93,11 +114,18 @@ def main():
             request["intake"]["needs"] = ["shelter", "food_water", "transport"]
         snapshot = service.create_case(token, request)["case_snapshot"]
         now = utc_now()
-        if args.rules or args.knowledge:
+        if args.rules or args.knowledge or args.planner or args.plan:
             correction = {"contract_version": "0.1", "case_id": snapshot["case_id"], "event_id": "live_proof_issuer",
                           "expected_case_version": snapshot["case_version"], "occurred_at": now, "channel": "dashboard",
                           "type": "fact.correct", "payload": {"fact_key": "document_issuing_state", "value": "CO", "observed_at": now}}
             snapshot = service.execute(token, correction)["case_snapshot"]
+        if args.planner or args.plan:
+            for key, value in (("credential_lost", True), ("mobility", "no_car"),
+                               ("office_transport_available", False), ("internet_access", True)):
+                correction = {"contract_version": "0.1", "case_id": snapshot["case_id"], "event_id": "live_proof_" + key,
+                              "expected_case_version": snapshot["case_version"], "occurred_at": now, "channel": "dashboard",
+                              "type": "fact.correct", "payload": {"fact_key": key, "value": value, "observed_at": now}}
+                snapshot = service.execute(token, correction)["case_snapshot"]
         text = ("This is a synthetic test. Call get_incident_context for location_scope current with lookback_days 30, "
                 "using the reported case geography. Reply after checking each provider state. Distinguish no matching records "
                 "from missing geography or failed sources; do not claim household eligibility or absence of a disaster."
@@ -127,7 +155,20 @@ def main():
                     "Do not invent an answer if retrieval fails. Keep fees, complete requirements and household "
                     "eligibility unknown. This is a read-only example; do not change facts, submit review material "
                     "or publish policy. Never request credential numbers.")
-        catalog_before = service.read_program_catalog() if args.knowledge or args.fetch else None
+        if args.planner:
+            text = ("This is a synthetic test. Call evaluate_recovery_options for program_id co_state_id_replacement. "
+                    "Use the case's explicit Colorado issuer, lost-ID and no-car/transport facts. Explain the returned "
+                    "online provisional alternative and blocked office route. Include the words online, office and unknown, "
+                    "and cite the online option's official_url from the tool. Keep eligibility, fees and transport costs unknown. "
+                    "Do not change any facts, saved plan, tasks, finances, policy or applications. Never request document numbers.")
+        if args.plan:
+            text = ("This is a synthetic test. First call revise_recovery_plan for program_id co_state_id_replacement. "
+                    "I report completing the online route in this synthetic case; call update_task with that saved action ID and status completed. "
+                    "Then call revise_recovery_plan again for the same program, preserving my reported completed work. "
+                    "Reply with the words saved, completed and unknown, and cite the online action's official_url. "
+                    "Completion is user-reported; eligibility, current costs and agency outcomes remain unknown. "
+                    "Do not correct facts, record money, change policy or submit an application.")
+        catalog_before = service.read_program_catalog() if args.knowledge or args.fetch or args.planner or args.plan else None
         command = {
             "contract_version": "0.1", "case_id": snapshot["case_id"], "event_id": "live_proof_message",
             "expected_case_version": snapshot["case_version"], "occurred_at": now, "channel": "chat",
@@ -135,7 +176,7 @@ def main():
                 "text": text},
         }
         runtime = AgentRuntime(service, config, diagnostics=diagnostics)
-        if args.rules or args.knowledge or args.fetch:
+        if args.rules or args.knowledge or args.fetch or args.planner or args.plan:
             runtime.registry = RuleProofRegistry(runtime.registry.definitions)
         result = runtime.handle(token, command)
         case = result["case_snapshot"]
@@ -190,6 +231,73 @@ def main():
                 record(diagnostics, "smoke_failed", code="rule_side_effect_unexpected")
                 print("Live proof incomplete: a read-only rule test unexpectedly changed domain state.")
                 return 1
+        elif args.plan:
+            registry = runtime.registry
+            if len(registry.plan_results) < 2 or not registry.task_results:
+                record(diagnostics, "smoke_failed", code="plan_workflow_missing")
+                print("Live plan proof incomplete: save, task report and preserving revision were not all performed.")
+                return 1
+            paths = {action["path_id"]: action for action in case["plan"]["actions"]}
+            online, office = paths.get("co_id_online_renewal"), paths.get("co_id_office_renewal")
+            if (any(result["status"] not in ("applied", "already_applied") for result in registry.plan_results + registry.task_results)
+                    or not online or not office or online["status"] != "completed" or office["status"] != "blocked"
+                    or len(case["plan"]["revisions"]) != 2 or len(online["history"]) != 1
+                    or online["history"][0]["provenance"] != "user_reported" or case["plan"]["household_eligibility"] != "unknown"
+                    or not online["source_records"]
+                    or online["costs"]["fee_cents"] is not None or office["costs"]["transport_cents"] is not None):
+                record(diagnostics, "smoke_failed", code="plan_workflow_invalid")
+                print("Live plan proof incomplete: completion, retained work, sources or unknowns were invalid.")
+                return 1
+            if not all(word in turn["text"].lower() for word in ("saved", "completed", "unknown")) or online["official_url"] not in turn["text"]:
+                record(diagnostics, "smoke_failed", code="plan_workflow_reply_missing")
+                print("Live plan proof incomplete: saved reply omitted the report, uncertainty or official link.")
+                return 1
+            if (service.read_program_catalog() != catalog_before or any(case[key] != snapshot[key] for key in
+                    ("facts", "needs", "evidence", "resources", "applications", "check_in", "shared_location", "follow_ups", "components"))
+                    or case["finance"]["ledger"] != snapshot["finance"]["ledger"]):
+                record(diagnostics, "smoke_failed", code="plan_workflow_side_effect")
+                print("Live plan proof incomplete: facts, money, consent or policy were unexpectedly changed.")
+                return 1
+            if case["plan"]["state"] != "provisional":
+                record(diagnostics, "smoke_failed", code="plan_workflow_invalid")
+                print("Live plan proof incomplete: the preserving revision was not current.")
+                return 1
+            plan_calls = len(registry.plan_results) + len(registry.task_results)
+        elif args.planner:
+            from ..contracts import validate
+            planned = runtime.registry.planner_result
+            if planned is None:
+                record(diagnostics, "smoke_failed", code="planner_result_missing")
+                print("Live planner proof incomplete: no recovery evaluation was returned.")
+                return 1
+            validate("RecoveryOptionResult", planned)
+            paths = {option["path_id"]: option for option in planned["options"]}
+            online, office = paths.get("co_id_online_renewal"), paths.get("co_id_office_renewal")
+            ids = {source["id"] for source in planned["sources"]}
+            if (planned["state"] != "available" or planned["query"]["issuing_state"] != "CO"
+                    or planned["household_eligibility"] != "unknown" or len(paths) != 2 or not online or not office
+                    or online["status"] != "provisional" or office["status"] != "blocked"
+                    or online["blockers"] or not online["questions"]
+                    or not any(item["fact_key"] == "office_transport_available" for item in office["blockers"])
+                    or office["id"] not in online["alternative_option_ids"]
+                    or any(option["costs"][key] is not None for option in paths.values() for key in ("fee_cents", "transport_cents", "cost_date"))
+                    or not ids or any(not set(option["source_ids"]) <= ids for option in paths.values())):
+                record(diagnostics, "smoke_failed", code="planner_result_invalid")
+                print("Live planner proof incomplete: options, no-car constraints, costs or provenance were invalid.")
+                return 1
+            reply = turn["text"].lower()
+            if not all(word in reply for word in ("online", "office", "unknown")) or not any(
+                    option["official_url"].lower() in reply for option in paths.values()):
+                record(diagnostics, "smoke_failed", code="planner_reply_missing")
+                print("Live planner proof incomplete: saved reply omitted the alternatives, unknowns or official link.")
+                return 1
+            if (service.read_program_catalog() != catalog_before or any(case[key] != snapshot[key] for key in
+                    ("facts", "needs", "evidence", "resources", "plan", "applications", "check_in", "shared_location", "follow_ups", "components", "sources"))
+                    or case["finance"]["ledger"] != snapshot["finance"]["ledger"]):
+                record(diagnostics, "smoke_failed", code="planner_side_effect_unexpected")
+                print("Live planner proof incomplete: evaluation unexpectedly changed household domains or policy.")
+                return 1
+            planner_calls = runtime.registry.planner_calls
         elif args.fetch:
             from ..contracts import InvalidInput
             from ..knowledge.fetch_smoke import EVIDENCE_PHRASE, SOURCE_ID, live_guidance
@@ -249,12 +357,20 @@ def main():
             print("Live proof incomplete: required fact tool did not save the reported value.")
             return 1
         replay = runtime.handle(token, command)
-        if replay["status"] != "already_applied" or replay["case_snapshot"]["case_version"] != case["case_version"]:
+        if (replay["status"] != "already_applied" or replay["case_snapshot"]["case_version"] != case["case_version"]
+                or args.planner and (runtime.registry.planner_calls != planner_calls
+                                     or replay["case_snapshot"]["conversation"]["turns"][-1] != turn)
+                or args.plan and (len(runtime.registry.plan_results) + len(runtime.registry.task_results) != plan_calls
+                                  or replay["case_snapshot"] != case)):
             record(diagnostics, "smoke_failed", code="replay_failed")
             print("Live proof incomplete: replay verification failed.")
             return 1
         record(diagnostics, "smoke_passed", mode=mode, retrieval_state=fetched["state"] if args.knowledge or args.fetch else None)
-        if args.fetch:
+        if args.plan:
+            print("Live Bedrock saved plan, user-reported task completion, preserving revision, sourced reply and replay passed on a disposable synthetic case. Eligibility, costs and agency outcomes remain unknown.")
+        elif args.planner:
+            print("Live Bedrock read-only planner, provisional online/blocked office alternatives, unknown costs/eligibility, sourced saved reply, unchanged domains/policy and replay passed on a disposable synthetic case.")
+        elif args.fetch:
             print("Live Bedrock fresh official fetch, source-backed saved reply, unchanged domains/policy and replay passed.")
             print("Fetched at:", receipt["retrieved_at"])
             print("Official source:", receipt["url"])

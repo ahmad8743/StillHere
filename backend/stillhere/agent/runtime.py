@@ -10,7 +10,7 @@ from .config import AgentConfig
 from .diagnostics import failure, record
 from .provider import StrandsBedrockProvider
 from .registry import (CASE_TOOLS, CANDIDATE_TOOL, DISCREPANCY_TOOL, INCIDENT_TOOL, INTAKE_TOOL,
-                       OFFICIAL_TOOL, RESOURCE_TOOL, RULE_TOOL, ToolRegistry)
+                       OFFICIAL_TOOL, PLANNER_TOOL, PLAN_REVISION_TOOL, RESOURCE_TOOL, RULE_TOOL, TASK_TOOL, ToolRegistry)
 from .tools import AgentContext, AgentFailure
 
 
@@ -24,6 +24,9 @@ class AgentRuntime:
                                                + ((INCIDENT_TOOL,) if self.config.enable_incidents else ())
                                                + ((RESOURCE_TOOL,) if self.config.enable_resources else ())
                                                + ((RULE_TOOL,) if self.config.enable_rules else ())
+                                               + ((PLANNER_TOOL,) if self.config.enable_planner else ())
+                                               + ((PLAN_REVISION_TOOL,) if self.config.enable_plan_revision else ())
+                                               + ((TASK_TOOL,) if self.config.enable_tasks else ())
                                                + ((OFFICIAL_TOOL,) if self.config.enable_official_sources or self.config.enable_rule_review else ())
                                                + ((CANDIDATE_TOOL, DISCREPANCY_TOOL) if self.config.enable_rule_review else ()))
         if self.config.enable_incidents and incident_facade is None:
@@ -34,7 +37,7 @@ class AgentRuntime:
             from ..resources import ResourceCatalog
             resource_catalog = ResourceCatalog(clock=service.clock)
         self.resource_catalog = resource_catalog
-        if self.config.enable_rules and rule_store is None:
+        if (self.config.enable_rules or self.config.enable_planner) and rule_store is None:
             from ..knowledge import ProgramRuleStore
             rule_store = ProgramRuleStore(loader=service.read_program_catalog, version_loader=service.read_program_version)
         self.rule_store = rule_store

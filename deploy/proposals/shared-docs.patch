@@ -1,0 +1,38 @@
+--- a/README.md
++++ b/README.md
+@@ -234,3 +234,11 @@
+ .venv/bin/python -W error::ResourceWarning -m unittest discover -s tests -q
+ .venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --plan
+ ```
++
++## Backend deployment assets
++
++User-run Linux packaging, trusted IP TLS renewal, systemd registration and synthetic
++restart/restore/worker proofs are in [deploy/OPERATIONS.md](deploy/OPERATIONS.md).
++See [deployment evidence](docs/parallel/deployment-final-handoff.md) for separate
++asset, integrated, target and live states. Deployment waits for integrated acceptance;
++no installation, production readiness, TLS or host-loss recovery is claimed.
+--- a/docs/backend-integration.md
++++ b/docs/backend-integration.md
+@@ -50,5 +50,8 @@
+ `Operation not permitted`, both within the sandbox and after the approved-access
+ retry. No remote commands ran and no deployment changes were made. The user must
+ verify access from their terminal, or provide an execution environment that permits
+-SSH. Integrated acceptance, a TLS hostname/DNS configuration, and user-controlled
+-private provider configuration remain pending; the IP alone does not satisfy them.
++SSH. Integrated acceptance, confirmed target OS/architecture, trusted public IP TLS
++issuance/renewal and user-controlled private provider configuration remain pending.
++A domain is no longer a prerequisite: reviewed assets use Certbot shortlived IP
++certificates for 172.238.189.78. Asset preparation, target verification and actual
++deployment remain separate; see [final deployment handoff](parallel/deployment-final-handoff.md).
+--- a/docs/contracts-and-progress.md
++++ b/docs/contracts-and-progress.md
+@@ -454,7 +454,7 @@
+ | C13 Offline/replay | P2 + P1 processing | NOT_STARTED | None | Queue/replay stable events; verify conflict, late reply and local erase |
+ | C14 Text simulator | P2 | NOT_STARTED | None | Route numbered inputs through shared commands; output usable plain-text contacts |
+ | C15 Print summary | P2 | NOT_STARTED | None | Print selected steps/contacts/dates; verify sensitive fields are opt-in |
+-| C16 Assembly/acceptance | P1 + P2 walkthrough | NOT_STARTED | None | Integrate early path; document environment, checks and runnable demo |
++| C16 Assembly/acceptance | P1 + P2 walkthrough | NOT_STARTED | Deployment assets are separately reviewable; [final deployment handoff](parallel/deployment-final-handoff.md) records synthetic evidence, target gates and exact unapplied application proposals | Integrated acceptance remains owner-controlled; confirm Linux target, offline wheel/hash install, native validation, trusted IP TLS/renewal and user-run restart/restore/worker evidence before deployment |
+ | O01 Plaid Sandbox | P2 + P1 integration | DEFERRED | None | Attempt only after required core checks pass and sandbox access is ready |
+ 
+ Progress: C01's household/intake foundation and C01-facing Strands adapters are available for integration. C01 stays `IN_PROGRESS` because broader domain handlers and operator provisioning are unfinished. C02's bounded runtime and C03 incident adapters/tool are `READY_FOR_INTEGRATION`, with offline SDK checks and separate live Bedrock/default-tool and public-source evidence. C02 as a whole stays `IN_PROGRESS` for later tools/output contracts. All five bounded C04 slices are `READY_FOR_INTEGRATION`; national backend fetching and the strict live reply/replay proof pass, while Colorado live candidate extraction, local HTTP checks and P2 review remain pending. C05 is `IN_PROGRESS` with evaluation, CaseService revision and task-report slices `READY_FOR_INTEGRATION`; live planner/workflow proofs, deeper evidence/dependency and cost integration remain pending. Full policy coverage and household eligibility remain unknown. P2's C08/C09 browser prototypes and initial fixture/mock implementation are `IN_PROGRESS`; bounded finance/schema checks pass. Remaining domains, frontend/backend integration, populated schemas, the full fixture set, and the joint contract freeze remain pending. C09 implementation is deferred for this chat.

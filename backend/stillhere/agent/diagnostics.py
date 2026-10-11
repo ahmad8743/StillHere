@@ -15,7 +15,7 @@ EVENTS = frozenset({
     "access_check_started", "access_identity_started", "access_profile_started",
     "access_form_started", "access_availability_started", "access_check_complete",
 })
-SMOKE_MODES = frozenset({"default", "incidents", "resources", "rules", "access", "knowledge", "fetch"})
+SMOKE_MODES = frozenset({"default", "incidents", "resources", "rules", "access", "knowledge", "fetch", "planner", "plan"})
 ACCESS_STATES = {
     "account_match": frozenset({"MATCH", "MISMATCH", "NOT_CHECKED", "UNKNOWN"}),
     "profile": frozenset({"ACTIVE", "NOT_APPLICABLE", "UNKNOWN"}),
@@ -37,6 +37,8 @@ CODES = frozenset({
     "required_fact_missing", "replay_failed", "incident_context_missing", "incident_sources_unavailable",
     "resource_search_missing", "resource_attribution_invalid", "rule_lookup_missing",
     "rule_attribution_invalid", "rule_side_effect_unexpected",
+    "planner_result_missing", "planner_result_invalid", "planner_reply_missing", "planner_side_effect_unexpected",
+    "plan_workflow_missing", "plan_workflow_invalid", "plan_workflow_reply_missing", "plan_workflow_side_effect",
     "official_fetch_missing", "knowledge_submission_missing", "knowledge_publication_unexpected", "knowledge_domain_changed",
     "official_live_fetch_unavailable", "official_example_content_missing", "official_example_reply_missing",
     "AccessDeniedException", "ValidationException",
@@ -57,6 +59,7 @@ ERROR_TYPES = frozenset({
 # Match only fixed service phrases. Output labels never contain any substring
 # copied from an AWS message, which may include identifiers or request values.
 AWS_REASON_RULES = (
+    ("tool_schema_unsupported", ("input_schema does not support oneof, allof, or anyof at the top level",)),
     ("anthropic_use_case_required", ("model use case details have not been submitted", "fill out the anthropic use case", "ftuformnotfilled")),
     ("account_model_access_denied", ("not available for this account", "access to bedrock models is not allowed for this account")),
     ("operation_not_allowed", ("operation not allowed",)),

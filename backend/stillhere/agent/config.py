@@ -32,6 +32,9 @@ class AgentConfig:
     enable_rules: bool = False
     enable_official_sources: bool = False
     enable_rule_review: bool = False
+    enable_planner: bool = False
+    enable_plan_revision: bool = False
+    enable_tasks: bool = False
 
     def __post_init__(self):
         for key in ("max_turns", "max_tool_calls", "max_output_tokens", "max_total_tokens", "timeout_seconds", "history_turns", "max_context_chars"):
@@ -68,7 +71,15 @@ class AgentConfig:
         review = os.environ.get("STILLHERE_AGENT_ENABLE_RULE_REVIEW", "false").lower()
         if official not in ("true", "false") or review not in ("true", "false"):
             raise ValueError("STILLHERE_AGENT_ENABLE_OFFICIAL_SOURCES and STILLHERE_AGENT_ENABLE_RULE_REVIEW must be true or false.")
+        planner = os.environ.get("STILLHERE_AGENT_ENABLE_PLANNER", "false").lower()
+        if planner not in ("true", "false"):
+            raise ValueError("STILLHERE_AGENT_ENABLE_PLANNER must be true or false.")
+        revision = os.environ.get("STILLHERE_AGENT_ENABLE_PLAN_REVISION", "false").lower()
+        tasks = os.environ.get("STILLHERE_AGENT_ENABLE_TASKS", "false").lower()
+        if revision not in ("true", "false") or tasks not in ("true", "false"):
+            raise ValueError("STILLHERE_AGENT_ENABLE_PLAN_REVISION and STILLHERE_AGENT_ENABLE_TASKS must be true or false.")
         return cls(model_id=os.environ.get("STILLHERE_BEDROCK_MODEL_ID", "").strip(),
                    region=os.environ.get("AWS_REGION", "").strip(), enable_intake=intake == "true",
                    enable_incidents=incidents == "true", enable_resources=resources == "true",
-                   enable_rules=rules == "true", enable_official_sources=official == "true", enable_rule_review=review == "true", **settings)
+                   enable_rules=rules == "true", enable_official_sources=official == "true", enable_rule_review=review == "true",
+                   enable_planner=planner == "true", enable_plan_revision=revision == "true", enable_tasks=tasks == "true", **settings)

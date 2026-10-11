@@ -1,0 +1,56 @@
+{
+    # Certificates are published by the root-owned Certbot hook. Do not fall
+    # back to Caddy's local CA for an IP address.
+    auto_https off
+    # Runtime error messages may contain URLs/identifiers. Emit no proxy request
+    # logs; monitor status with the bounded health/verification tools instead.
+    log default {
+        output discard
+    }
+    servers {
+        timeouts {
+            read_header 10s
+            read_body 15s
+            write 150s
+            idle 30s
+        }
+    }
+}
+
+http://172.238.189.78 {
+    handle /.well-known/acme-challenge/* {
+        root * /var/lib/stillhere-acme
+        file_server
+    }
+    handle {
+        redir https://172.238.189.78{uri} 308
+    }
+}
+
+https://172.238.189.78 {
+    tls /etc/stillhere/tls/current/fullchain.pem /etc/stillhere/tls/current/privkey.pem
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Cache-Control no-store
+        -Server
+    }
+    @api path /health /v1/sessions /v1/cases /v1/cases/* /v1/commands /v1/operator/queue /v1/operator/cases/* /v1/operator/commands
+    handle @api {
+        request_body {
+            max_size 65536
+        }
+        reverse_proxy 127.0.0.1:8000 {
+            # Preserve methods, version headers, authorization and bodies; no
+            # identity translation, caching or retries of household commands.
+            transport http {
+                dial_timeout 3s
+                response_header_timeout 130s
+                max_conns_per_host 32
+            }
+        }
+    }
+    handle {
+        respond "Route is unavailable." 404
+    }
+}
