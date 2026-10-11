@@ -46,7 +46,7 @@ Because sometimes, getting help isn't enough. **Getting it on time is what matte
 
 Going back to the recovery assistance chat, we want to include a way for dynamic circumstances to affect scheduling.
 
-Lets say, I ____.
+Lets say, I no longer need access to transportation.
 
 The agent is programmed to take in this new data and fix my to-do list accordingly.
 
