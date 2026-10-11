@@ -96,6 +96,16 @@ def apply_command(snapshot, command, received_at):
     updated["updated_at"] = received_at
     changed_inputs = ({command["payload"]["fact_key"]} if command["type"] == "fact.correct"
                       else set(command["payload"]) if command["type"] == "intake.submit" else set())
+    resources = updated["resources"]
+    search = resources.get("search")
+    if search and changed_inputs & {search["query"]["location_scope"] + "_location", "requested_needs", "needs"}:
+        search["freshness"] = "stale"
+        source_ids = {identifier for item in resources["items"] for identifier in item["source_ids"]}
+        for source in updated["sources"]:
+            if source.get("id") in source_ids:
+                source["freshness"] = "stale"
+        if not any(notice.get("code") == "resource_inputs_changed" for notice in resources["notices"]):
+            resources["notices"].append({"code": "resource_inputs_changed", "message": "Saved referrals refer to earlier location or need inputs. Retrieve again before using them for the corrected case.", "retryable": False})
     for scope, incident in updated.get("incident_context", {}).items():
         if changed_inputs & {scope + "_location", "crisis_type"}:
             incident["state"] = "stale"

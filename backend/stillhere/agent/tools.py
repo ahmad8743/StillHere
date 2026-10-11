@@ -32,6 +32,11 @@ class AgentContext:
     lock: object = field(default_factory=threading.RLock, repr=False)
     incident_facade: object = field(default=None, repr=False)
     incident_results: dict = field(default_factory=dict, repr=False)
+    resource_catalog: object = field(default=None, repr=False)
+    resource_results: dict = field(default_factory=dict, repr=False)
+    rule_store: object = field(default=None, repr=False)
+    official_fetcher: object = field(default=None, repr=False)
+    official_results: dict = field(default_factory=dict, repr=False)
 
     def check_budget(self):
         if time.monotonic() >= self.deadline:
@@ -102,5 +107,124 @@ def get_incident_context(context, arguments):
     return committed
 
 
+def find_resources(context, arguments):
+    from ..contracts import canonical_json
+    from ..resources import build_query, query_identity
+    if context.writes_conflicted:
+        raise AgentFailure("version_conflict", "A concurrent change needs user reconciliation before another write.")
+    if context.resource_catalog is None:
+        raise AgentFailure("tool_forbidden", "Resource retrieval is not enabled.")
+    snapshot = read_case(context, {})
+    query = build_query(snapshot, arguments)
+    key = canonical_json(query_identity(query))
+    result = context.resource_results.get(key)
+    if result is None:
+        try:
+            result = context.resource_catalog.collect(query, snapshot["case_version"], context.deadline)
+        except TimeoutError:
+            error = AgentFailure("agent_timeout", "Resource lookup reached the agent time limit; no late result was committed.")
+            context.terminal_issue = error.issue
+            raise error from None
+        context.resource_results[key] = result
+    if time.monotonic() >= context.deadline:
+        error = AgentFailure("agent_timeout", "Resource lookup reached the agent time limit; no late result was committed.")
+        context.terminal_issue = error.issue
+        raise error
+    committed = context.service.commit_agent_resources(
+        context.token, context.case_id, context.event_id, context.run_id, result, context.expected_version)
+    if committed["status"] == "conflict":
+        context.writes_conflicted = True
+    elif committed["status"] in ("applied", "already_applied"):
+        context.expected_version = committed["case_snapshot"]["case_version"]
+    return committed
+
+
+def retrieve_program_rules(context, arguments):
+    from ..contracts import InvalidInput
+    from ..knowledge import build_query, validate_result
+    from ..knowledge.rules import notice
+    if context.writes_conflicted:
+        raise AgentFailure("version_conflict", "A concurrent change needs user reconciliation before another scoped lookup.")
+    if context.rule_store is None:
+        raise AgentFailure("tool_forbidden", "Program-rule retrieval is not enabled.")
+    snapshot = read_case(context, {})
+    query = build_query(snapshot, arguments, context.service.clock())
+    try:
+        result = context.rule_store.lookup(query, context.deadline)
+    except TimeoutError:
+        error = AgentFailure("agent_timeout", "Rule lookup reached the agent time limit.")
+        context.terminal_issue = error.issue
+        raise error from None
+    if time.monotonic() >= context.deadline:
+        error = AgentFailure("agent_timeout", "Rule lookup reached the agent time limit; late requirements were discarded.")
+        context.terminal_issue = error.issue
+        raise error
+    validate_result(result)
+    if result["query"] != query:
+        raise InvalidInput("$.query", "Rule results must match the backend's exact scoped lookup.")
+    latest = context.service.read_case(context.token, context.case_id)
+    if time.monotonic() >= context.deadline:
+        error = AgentFailure("agent_timeout", "Rule lookup reached the agent time limit during input revalidation.")
+        context.terminal_issue = error.issue
+        raise error
+    if latest["case_version"] != snapshot["case_version"]:
+        context.writes_conflicted = True
+        result.update(state="conflict", rules=[], sources=[], notices=[notice("version_conflict", "Case inputs changed during rule lookup. Reconcile before using requirements or making another change.")])
+    validate_result(result)
+    return result
+
+
 def failure(issue):
     return {"contract_version": VERSION, "error": issue}
+
+
+def fetch_official_source(context, arguments):
+    from ..contracts import InvalidInput
+    from ..knowledge.official import validate_fetch
+    if context.official_fetcher is None:
+        raise AgentFailure("tool_forbidden", "Official-source retrieval is not enabled.")
+    snapshot = read_case(context, {})
+    source_id = arguments["source_id"]
+    result = context.official_results.get(source_id)
+    if result is None:
+        now = context.service.clock()
+        try:
+            result = context.official_fetcher.fetch(source_id, now, context.deadline)
+        except TimeoutError:
+            error = AgentFailure("agent_timeout", "Official-source retrieval reached the agent time limit.")
+            context.terminal_issue = error.issue
+            raise error from None
+        validate_fetch(result)
+        if result["source_id"] != source_id or result["requested_at"] != now:
+            raise InvalidInput("$.source_id", "Official results must match the exact backend request.")
+        latest = context.service.read_case(context.token, context.case_id)
+        if time.monotonic() >= context.deadline:
+            error = AgentFailure("agent_timeout", "Late official-source results were discarded.")
+            context.terminal_issue = error.issue
+            raise error
+        if latest["case_version"] != snapshot["case_version"]:
+            context.writes_conflicted = True
+        context.official_results[source_id] = result
+    return result
+
+
+def _submit_knowledge(context, arguments, kind):
+    from ..contracts import InvalidInput
+    if context.writes_conflicted:
+        raise AgentFailure("version_conflict", "Reconcile the concurrent case change before submitting public review evidence.")
+    fetched = context.official_results.get(arguments["source_id"])
+    if fetched is None:
+        raise InvalidInput("$.source_id", "Call fetch_official_source for this public source before submitting review evidence.")
+    result = context.service.submit_agent_knowledge(context.token, context.case_id, context.event_id, context.run_id,
+                                                  kind, arguments, fetched, context.expected_version, context.deadline)
+    if result["state"] == "conflict":
+        context.writes_conflicted = True
+    return result
+
+
+def propose_rule_candidate(context, arguments):
+    return _submit_knowledge(context, arguments, "candidate")
+
+
+def report_rule_discrepancy(context, arguments):
+    return _submit_knowledge(context, arguments, "discrepancy")

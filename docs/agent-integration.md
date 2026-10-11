@@ -1,6 +1,6 @@
 # C01-facing agent slice — integration handoff
 
-Updated October 10, 2026. **The C01-facing Strands adapters and bounded C02 runtime
+Updated October 11, 2026. **The C01-facing Strands adapters and bounded C02 runtime
 are READY_FOR_INTEGRATION after the user-run live Bedrock proof passed.** The user
 selected Claude Sonnet 4.5 as the current working model. The broader C02 component
 remains IN_PROGRESS for later tools and output contracts. C01 remains IN_PROGRESS
@@ -16,13 +16,30 @@ boundary review.
 | `correct_fact` | Enabled | `fact.correct`; `FactCorrectionPayload` arguments; `CommandResult` result |
 | `submit_intake` | Opt-in | `intake.submit`; `SubmitIntakeToolArguments` with `selections`; `CommandResult` result |
 | `get_incident_context` | Opt-in | C03 public source facade and CaseService internal commit; `IncidentToolArguments`; `CommandResult` result |
+| `find_resources` | Opt-in | C04 reviewed seeded catalog and CaseService internal commit; `ResourceToolArguments`; `CommandResult` result |
+| `retrieve_program_rules` | Opt-in | C04 read-only reviewed reference store; `ProgramRuleToolArguments`; `ProgramRuleResult` result |
+| `fetch_official_source` | Opt-in | Approved public source registry; `OfficialSourceToolArguments`; unreviewed `OfficialFetchResult` |
+| `propose_rule_candidate` | Opt-in review group | CaseService public review submission; `RuleCandidateToolArguments`; unpublished `KnowledgeSubmissionResult` |
+| `report_rule_discrepancy` | Opt-in review group | CaseService public discrepancy submission; `RuleDiscrepancyToolArguments`; unpublished `KnowledgeSubmissionResult` |
 
 Set `STILLHERE_AGENT_ENABLE_INTAKE=true` when integrating the intake adapter. Its
 shared selection vocabulary, unknown coverage, provenance, and consent behavior
 are the existing C01 behavior. Set `STILLHERE_AGENT_ENABLE_INCIDENTS=true` for
 C03 NWS/USGS/OpenFEMA context; no new source credentials are needed. The
 [C03 handoff](incident-integration.md) records geography, freshness, persistence
-and live-source evidence. Other inventory tools remain unregistered. C09 is
+and live-source evidence. Set `STILLHERE_AGENT_ENABLE_RESOURCES=true` for the C04
+reviewed referral slice. Its catalog needs no additional credentials or network
+lookup; the [C04 handoff](resource-integration.md) records coverage, schema, source
+review and failure behavior. Set `STILLHERE_AGENT_ENABLE_RULES=true` for the
+independent read-only rule slice; the [rule handoff](program-rules-integration.md)
+records explicit document-issuer scope, partial AND/OR alternatives and unknowns.
+Set `STILLHERE_AGENT_ENABLE_OFFICIAL_SOURCES=true` for bounded public fetching;
+`STILLHERE_AGENT_ENABLE_RULE_REVIEW=true` adds fetch plus both submission tools.
+The [fetch/review handoff](knowledge-review-integration.md) records privacy, local
+manual authority, atomic publication, immutable history and remaining live proof.
+All five bounded C04 slices are READY_FOR_INTEGRATION; policy coverage remains
+partial. The new knowledge failure/discrepancy branch is live-verified; national fetching now passes the strict live proof; Colorado candidate
+extraction remains pending. Other inventory tools remain unregistered. C09 is
 outside the current chat's work.
 
 `backend/stillhere/agent/registry.py` records each name, description, input/result
@@ -40,7 +57,9 @@ The backend supplies session/case/turn/run context through `ToolContext` invocat
 state. It never places the bearer token or AWS credentials in the prompt. Model
 arguments cannot select case, session, role, channel, or event identity. A hook
 checks raw arguments before SDK signature validation can discard extra fields.
-Tool calls are serialized and pass through the normal command service.
+Tool calls are serialized; case writes pass through the normal command service.
+Read-only rule lookup authorizes case access and returns public reference data
+without committing domain state or snapshot attribution.
 
 ## Run locally and configure Bedrock
 
@@ -94,8 +113,10 @@ the default read/fact path, durable reply, and event replay; it does not verify
 opt-in intake, later domain tools, UI integration, or deployed behavior.
 
 A subsequent user-run log records one completed tool call and `smoke_passed` at
-18.681 seconds. The phase log omits the smoke mode and model ID; attribution to
-the default or `--incidents` proof requires its terminal summary.
+18.681 seconds; the latest historical user-run pass is 20.356 seconds. These
+older phase logs omit mode/model identity and cannot establish which opt-in
+proof ran. New smoke start/pass records include an allowlisted mode, so a
+`smoke_passed` with `mode: "rules"` identifies the new rule proof.
 
 If the smoke test reports `agent_not_configured`, it has not attempted AWS
 authentication: `AWS_REGION` or `STILLHERE_BEDROCK_MODEL_ID` is missing. The next
@@ -113,7 +134,11 @@ read by Codex. Nonblank process environment values take precedence over
 
 The smoke command appends phase timings and allowlisted error codes to
 `var/agent-smoke.jsonl` (already excluded from Git). Override it with `--log-file`.
-The log never includes credential values, model/profile IDs, prompts, case content,
+New `smoke_started` and `smoke_passed` records identify the allowlisted mode
+(`default`, `incidents`, `resources`, `rules`, `knowledge`, `fetch`, `access`); free-text modes are
+excluded. Knowledge pass records additionally include allowlisted `retrieval_state`
+(`available`, `unavailable`, `unknown`); failure handling does not prove successful
+live extraction. The log never includes credential values, model/profile IDs, prompts, case content,
 exception messages, or raw AWS responses. Codex can read this safe log after the
 user runs the credentialed command. `sdk_import_started` without
 `sdk_import_complete` locates a local dependency-import stall;
@@ -260,13 +285,58 @@ relying on enforcement. [Official Codex permission documentation](https://develo
 The SDK tests use the real pinned Strands loop with a scripted model transport;
 they never load `.env.local` or call Bedrock. Without the optional dependency,
 those checks explicitly skip. HTTP checks bind only an ephemeral loopback port.
-All 99 offline checks pass with the optional dependencies installed. Evidence
+The C04 completion milestone recorded 186 non-HTTP offline passes with the optional dependencies installed. That full discovery ran 191 checks; the same five existing HTTP checks that failed at baseline cannot bind loopback sockets under this session's host policy, including a requested-access rerun. Current HTTP transport verification remains pending; the previous milestone recorded 99 passing checks in its environment. Evidence
 covers scoped reads, fact/intake writes, duplicate effects/turns,
 concurrent case edits/claims, ordered queued messages, restart/expired-run behavior,
 provider/storage failures, bounded execution, raw SDK schema validation, and
 credential-free provider configuration, and read-only access diagnostics through
-fake clients, and C03 normalization/persistence/SDK integration. Public C03 source
+fake clients, and C03 normalization/persistence/SDK integration, plus 24 C04 referral, 28 rule and 34 official-fetch/review/workflow checks. Sixteen real-SDK checks cover the implemented adapters, including all five C04 tools, separate public submissions and failed-source handling. Public C03 source
 requests pass separately with synthetic geography. The user-run live proof verifies
 the current default tool path; a live Sonnet/C03 tool proof and Akamai deployment
 remain separate checks. Use `agent.smoke --env-file .env.local --incidents` for the
 former; the ordinary smoke command retains its default read/fact proof.
+
+The C04 referral and bounded read-only reviewed-rule slices are READY_FOR_INTEGRATION with offline evidence and user-run live proofs. The safe user-run log confirms `--rules` at 14.992 seconds and `--resources` at 18.535 seconds, each with one completed tool call, a completed run and mode-labeled `smoke_passed`. These verify their bounded live model/tool/reply/replay paths; household eligibility and live resource capacity remain unknown. User-run `agent.smoke --env-file .env.local --resources` verifies saved referrals/reply/replay; `agent.smoke --env-file .env.local --rules` verifies scoped rule alternatives, attribution, saved reply, unchanged domains and replay. The commands enable their own tool on disposable synthetic cases; no running HTTP server is needed. Live capacity and household eligibility remain unknown. Keep Sonnet 4.5. All five bounded C04 implementation slices are now READY_FOR_INTEGRATION. The new official-fetch/submission/manual-publication paths pass synthetic checks; the new live knowledge failure branch passes at 13.569 seconds; national USAGov backend fetching and the strict `--fetch` reply/replay proof now pass; Colorado candidate extraction remains pending. Full policy coverage stays partial; C09 remains outside this chat's work. The [rule handoff](program-rules-integration.md#validation-and-user-run-checks) lists the remaining local tests.
+
+
+The user reports the disposable credential-free knowledge workflow passed.
+The safe log confirms `--knowledge` passed at 13.569 seconds with two completed
+tool calls, a completed run and `retrieval_state: unavailable`. The real-model
+failure/discrepancy/reply/replay path is verified; national backend fetching now passes through `--fetch`;
+Colorado live candidate extraction remains pending. The source-failure reason is not
+in this log. The current full 208-check unrestricted local suite remains pending; the new
+source diagnostic has six passing checks within a 66-check focused run.
+`agent.smoke --env-file .env.local --knowledge` can verify the available-source
+branch when retrieval succeeds. Use `.venv/bin/python`
+for both module commands. The knowledge proof creates its own temporary case,
+checks unpublished submissions/unchanged policy and household domains, saves the
+reply and verifies replay. A successful available-source run verifies extraction;
+an unavailable-source pass verifies fallback/discrepancy handling and leaves
+successful extraction pending. Publication remains outside the agent registry.
+No source credentials are needed; the user runs the Bedrock command. Current
+backend GETs fail DNS here, independently of browser source review. See the
+[complete C04 handoff and checklist](knowledge-review-integration.md).
+
+Public fetch diagnosis needs no credential configuration or Bedrock call:
+`python -m backend.stillhere.knowledge.check_source` (use `.venv/bin/python`).
+It repeats the approved public transport and reports safe categories/HTTP status,
+with no response text. The prior smoke log cannot recover its historical fetch
+failure reason. [Diagnostic guide](knowledge-review-integration.md#diagnose-an-unavailable-public-source).
+
+
+The required C04 live-fetch example before C05 now passes. The national
+USAGov lost-ID source is independently approved for fetching, with no seeded
+fallback and no Colorado candidate/publication scope. Run credential-free
+`knowledge.fetch_smoke`, then user-run `agent.smoke --env-file .env.local --fetch`,
+both with `.venv/bin/python -m`. The strict fetch mode fails on source
+unavailability, irrelevant response text, an uncited/unsupported saved reply or
+household/policy changes; pass logs require `mode: fetch` and available retrieval.
+It prints actual fetched guidance after successful receipt/reply/replay checks.
+[Working example and access gate](knowledge-review-integration.md#working-live-fetch-example--verified).
+
+Current fetch-example validation: 203 non-HTTP checks pass, with 17 real-SDK
+checks and ten new strict example checks; discovery contains 208 tests. User-run
+public fetching and the strict Sonnet `--fetch` proof now pass: the safe log
+records one completed tool call and available retrieval at 13.265 seconds.
+The fetched guidance and official link appear in the saved reply, domains/policy
+stay unchanged and replay passes. This clears the prerequisite for C05.

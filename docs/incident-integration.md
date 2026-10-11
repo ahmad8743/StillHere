@@ -5,7 +5,9 @@ OpenFEMA adapters, shared schemas, CaseService commit and opt-in Strands tool ar
 implemented. All three public APIs passed a synthetic live request; populated
 records, failures and agent integration are covered by offline fixtures. A live
 Sonnet invocation of the new C03 tool remains a separate user-run check. C09 is
-outside the current chat's work.
+outside the current chat's work. All five bounded C04 slices are ready for integration;
+the [C04 fetch/review handoff](knowledge-review-integration.md) records the new
+live proof and source-retrieval gates.
 
 ## Enable and exercise the agent tool
 

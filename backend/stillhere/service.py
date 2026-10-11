@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .commands import assistant_turn_id, COMMAND_HANDLERS, apply_command, validate_payload, with_intake
 from .contracts import InvalidInput, VERSION, canonical_json, empty_case, utc_now, validate
+from .knowledge.review import KnowledgeServiceMixin
 
 
 class ServiceError(Exception):
@@ -20,7 +21,7 @@ class ServiceError(Exception):
         super().__init__(message)
 
 
-class CaseService:
+class CaseService(KnowledgeServiceMixin):
     def __init__(self, database_path, clock=utc_now):
         self.path = Path(database_path)
         self.clock = clock
@@ -69,6 +70,7 @@ class CaseService:
                     PRIMARY KEY (case_id, event_id)
                 );
             """)
+            self._init_knowledge(connection)
         # Additive migration preserves databases created by the first C01 slice.
         with self._transaction() as connection:
             columns = {row["name"] for row in connection.execute("PRAGMA table_info(events)")}
@@ -356,6 +358,59 @@ class CaseService:
                 return snapshot
         except sqlite3.Error:
             raise ServiceError(503, "storage_unavailable", "Agent result storage is unavailable.", True) from None
+
+    def commit_agent_resources(self, token, case_id, parent_event_id, run_id, result, expected_version):
+        """Internal C04 commit; the catalog and model have no direct case-storage access."""
+        from .resources import build_query, query_identity, validate_result
+        now = self.clock()
+        child_id = "agent_tool_" + self._fingerprint([case_id, parent_event_id, "resource.search"])[:48]
+        try:
+            validate_result(result)
+            query = result["search"]["query"]
+            child_id = "agent_tool_" + self._fingerprint([case_id, parent_event_id, "resource.search", query_identity(query)])[:48]
+            with self._transaction() as connection:
+                now = self.clock()
+                owner = self._session(connection, token)
+                snapshot = self._snapshot(connection, owner, case_id)
+                self._active_run(connection, case_id, parent_event_id, run_id, now)
+                existing = connection.execute("SELECT applied_version FROM events WHERE case_id=? AND event_id=?", (case_id, child_id)).fetchone()
+                if existing:
+                    return self._result(child_id, "already_applied", now, snapshot, existing["applied_version"])
+                current_query = build_query(snapshot, {"location_scope": query["location_scope"]})
+                if (expected_version != snapshot["case_version"] or result["search"]["input_case_version"] != expected_version
+                        or query_identity(query) != query_identity(current_query)):
+                    return self._result(child_id, "conflict", now, snapshot, issue={
+                        "code": "version_conflict", "message": "Case inputs changed during resource lookup; reconcile before another write.",
+                        "field": "expected_case_version", "retryable": False})
+                if result["state"] == "unavailable":
+                    # Keep prior valid referrals and their original query/source times intact.
+                    return self._result(child_id, "unavailable", now, snapshot, issue={
+                        "code": "resource_catalog_unavailable", "message": "Resource lookup failed. Previous referrals remain retained under their original scope; no match is not established.",
+                        "retryable": True})
+                before = canonical_json(snapshot)
+                old_ids = {identifier for item in snapshot["resources"]["items"] for identifier in item.get("source_ids", [])}
+                new_sources = result["sources"]
+                # Replace only this catalog's attribution, preserving incident/other sources.
+                replaced_ids = {identifier for identifier in old_ids if identifier.startswith("source_resource_")} | {source["id"] for source in new_sources}
+                snapshot["sources"] = [source for source in snapshot["sources"] if source.get("id") not in replaced_ids] + new_sources
+                snapshot["resources"] = json.loads(canonical_json({key: result[key] for key in ("state", "items", "notices", "search")}))
+                snapshot["case_version"] += 1
+                snapshot["updated_at"] = now
+                if snapshot["plan"]["state"] != "not_requested":
+                    snapshot["plan"].update(state="pending", pending_input_case_version=snapshot["case_version"])
+                if snapshot["finance"]["state"] == "not_calculated":
+                    snapshot["finance"]["input_case_version"] = snapshot["case_version"]
+                else:
+                    snapshot["finance"].update(state="pending", pending_input_case_version=snapshot["case_version"])
+                validate("CaseSnapshot", snapshot)
+                transition = {"type": "resource.search", "parent_event_id": parent_event_id, "payload": result}
+                connection.execute("UPDATE cases SET snapshot_json=? WHERE case_id=?", (canonical_json(snapshot), case_id))
+                connection.execute(
+                    "INSERT INTO events (case_id,event_id,fingerprint,command_json,first_received_at,applied_received_at,applied_version,before_case_json) VALUES (?,?,?,?,?,?,?,?)",
+                    (case_id, child_id, self._fingerprint(query_identity(query)), canonical_json(transition), now, now, snapshot["case_version"], before))
+                return self._result(child_id, "applied", now, snapshot, snapshot["case_version"])
+        except (InvalidInput, ServiceError, sqlite3.Error) as error:
+            return self._failed(child_id, now, error)
 
     def commit_agent_incident_context(self, token, case_id, parent_event_id, run_id, result, expected_version):
         """Internal C03 commit: a server-produced result, never a public/model snapshot write."""

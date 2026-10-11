@@ -1,0 +1,253 @@
+{
+  "version": "2026-10-10.referrals.1",
+  "items": [
+    {
+      "id": "us_housing",
+      "title": "Find emergency housing",
+      "kind": "referral",
+      "need_kinds": [
+        "shelter"
+      ],
+      "coverage": {
+        "country": "US",
+        "state": null
+      },
+      "contact": {
+        "url": "https://www.usa.gov/emergency-housing",
+        "phone": null
+      },
+      "summary": "Official nationwide routing to shelter and temporary housing contacts. Confirm local access and capacity with the provider.",
+      "requirements": {
+        "state": "unknown",
+        "items": []
+      },
+      "availability": {
+        "state": "unknown",
+        "observed_at": null,
+        "source_ids": []
+      },
+      "household_eligibility": "unknown",
+      "source_ids": [
+        "catalog_source_us_housing"
+      ],
+      "data_mode": "seeded"
+    },
+    {
+      "id": "us_food",
+      "title": "Find emergency food assistance",
+      "kind": "referral",
+      "need_kinds": [
+        "food_water"
+      ],
+      "coverage": {
+        "country": "US",
+        "state": null
+      },
+      "contact": {
+        "url": "https://www.usa.gov/emergency-food-assistance",
+        "phone": null
+      },
+      "summary": "Official nationwide routing to immediate food assistance. Ask the listed organizations about local access and requirements.",
+      "requirements": {
+        "state": "unknown",
+        "items": []
+      },
+      "availability": {
+        "state": "unknown",
+        "observed_at": null,
+        "source_ids": []
+      },
+      "household_eligibility": "unknown",
+      "source_ids": [
+        "catalog_source_us_food"
+      ],
+      "data_mode": "seeded"
+    },
+    {
+      "id": "us_documents",
+      "title": "Replace lost identity documents",
+      "kind": "referral",
+      "need_kinds": [
+        "lost_documents"
+      ],
+      "coverage": {
+        "country": "US",
+        "state": null
+      },
+      "contact": {
+        "url": "https://www.usa.gov/replace-vital-documents",
+        "phone": null
+      },
+      "summary": "Find the authority responsible for the missing document. Issuing jurisdiction and replacement requirements remain unresolved.",
+      "requirements": {
+        "state": "unknown",
+        "items": []
+      },
+      "availability": {
+        "state": "unknown",
+        "observed_at": null,
+        "source_ids": []
+      },
+      "household_eligibility": "unknown",
+      "source_ids": [
+        "catalog_source_us_documents"
+      ],
+      "data_mode": "seeded"
+    },
+    {
+      "id": "us_disaster",
+      "title": "Find disaster assistance routes",
+      "kind": "referral",
+      "need_kinds": [
+        "aid_applications",
+        "managing_money"
+      ],
+      "coverage": {
+        "country": "US",
+        "state": null
+      },
+      "contact": {
+        "url": "https://www.usa.gov/disaster-assistance",
+        "phone": "1-800-621-3362"
+      },
+      "summary": "Official FEMA application routes and referrals to other help when a disaster is not federally declared. Household eligibility is unknown.",
+      "requirements": {
+        "state": "unknown",
+        "items": []
+      },
+      "availability": {
+        "state": "unknown",
+        "observed_at": null,
+        "source_ids": []
+      },
+      "household_eligibility": "unknown",
+      "source_ids": [
+        "catalog_source_us_disaster"
+      ],
+      "data_mode": "seeded"
+    },
+    {
+      "id": "co_211",
+      "title": "Contact 211 Colorado for local referrals",
+      "kind": "referral",
+      "need_kinds": [
+        "shelter",
+        "food_water",
+        "transport",
+        "health_support",
+        "aid_applications",
+        "managing_money"
+      ],
+      "coverage": {
+        "country": "US",
+        "state": "CO"
+      },
+      "contact": {
+        "url": "https://www.211colorado.org/",
+        "phone": "2-1-1"
+      },
+      "summary": "Colorado community-service navigation by phone or website, including food, housing and transport categories. Confirm service-specific requirements and availability.",
+      "requirements": {
+        "state": "unknown",
+        "items": []
+      },
+      "availability": {
+        "state": "unknown",
+        "observed_at": null,
+        "source_ids": []
+      },
+      "household_eligibility": "unknown",
+      "source_ids": [
+        "catalog_source_co_211"
+      ],
+      "data_mode": "seeded"
+    }
+  ],
+  "sources": [
+    {
+      "id": "catalog_source_us_housing",
+      "url": "https://www.usa.gov/emergency-housing",
+      "issuer": "USAGov / U.S. General Services Administration",
+      "scope": {
+        "country": "US",
+        "state": null
+      },
+      "retrieved_at": "2026-10-11T01:59:58Z",
+      "reviewed_at": "2026-10-11T01:59:58Z",
+      "updated_at": null,
+      "expires_at": "2026-11-10T01:59:58Z",
+      "verification_state": "reviewed_referral",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_section": "Find shelters and temporary housing near you; Dial 211 to find emergency housing"
+    },
+    {
+      "id": "catalog_source_us_food",
+      "url": "https://www.usa.gov/emergency-food-assistance",
+      "issuer": "USAGov / U.S. General Services Administration",
+      "scope": {
+        "country": "US",
+        "state": null
+      },
+      "retrieved_at": "2026-10-11T01:59:58Z",
+      "reviewed_at": "2026-10-11T01:59:58Z",
+      "updated_at": null,
+      "expires_at": "2026-11-10T01:59:58Z",
+      "verification_state": "reviewed_referral",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_section": "How to get emergency food assistance"
+    },
+    {
+      "id": "catalog_source_us_documents",
+      "url": "https://www.usa.gov/replace-vital-documents",
+      "issuer": "USAGov / U.S. General Services Administration",
+      "scope": {
+        "country": "US",
+        "state": null
+      },
+      "retrieved_at": "2026-10-11T01:59:58Z",
+      "reviewed_at": "2026-10-11T01:59:58Z",
+      "updated_at": null,
+      "expires_at": "2026-11-10T01:59:58Z",
+      "verification_state": "reviewed_referral",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_section": "Type of ID / Who to contact"
+    },
+    {
+      "id": "catalog_source_us_disaster",
+      "url": "https://www.usa.gov/disaster-assistance",
+      "issuer": "USAGov / U.S. General Services Administration",
+      "scope": {
+        "country": "US",
+        "state": null
+      },
+      "retrieved_at": "2026-10-11T01:59:58Z",
+      "reviewed_at": "2026-10-11T01:59:58Z",
+      "updated_at": null,
+      "expires_at": "2026-11-10T01:59:58Z",
+      "verification_state": "reviewed_referral",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_section": "How to apply for FEMA disaster assistance; Find assistance if the disaster you experienced was not federally declared"
+    },
+    {
+      "id": "catalog_source_co_211",
+      "url": "https://www.211colorado.org/",
+      "issuer": "211 Colorado",
+      "scope": {
+        "country": "US",
+        "state": "CO"
+      },
+      "retrieved_at": "2026-10-11T01:59:58Z",
+      "reviewed_at": "2026-10-11T01:59:58Z",
+      "updated_at": null,
+      "expires_at": "2026-11-10T01:59:58Z",
+      "verification_state": "reviewed_referral",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_section": "Search by Category; Ways to Get Help; About Us"
+    }
+  ]
+}

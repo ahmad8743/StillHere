@@ -9,22 +9,39 @@ from ..service import ServiceError
 from .config import AgentConfig
 from .diagnostics import failure, record
 from .provider import StrandsBedrockProvider
-from .registry import CASE_TOOLS, INCIDENT_TOOL, INTAKE_TOOL, ToolRegistry
+from .registry import (CASE_TOOLS, CANDIDATE_TOOL, DISCREPANCY_TOOL, INCIDENT_TOOL, INTAKE_TOOL,
+                       OFFICIAL_TOOL, RESOURCE_TOOL, RULE_TOOL, ToolRegistry)
 from .tools import AgentContext, AgentFailure
 
 
 class AgentRuntime:
-    def __init__(self, service, config=None, provider=None, registry=None, diagnostics=None, incident_facade=None):
+    def __init__(self, service, config=None, provider=None, registry=None, diagnostics=None, incident_facade=None, resource_catalog=None, rule_store=None, official_fetcher=None):
         self.service = service
         self.config = config or AgentConfig()
         self.diagnostics = diagnostics
         self.provider = provider or StrandsBedrockProvider(self.config, diagnostics=diagnostics)
         self.registry = registry or ToolRegistry(CASE_TOOLS + ((INTAKE_TOOL,) if self.config.enable_intake else ())
-                                               + ((INCIDENT_TOOL,) if self.config.enable_incidents else ()))
+                                               + ((INCIDENT_TOOL,) if self.config.enable_incidents else ())
+                                               + ((RESOURCE_TOOL,) if self.config.enable_resources else ())
+                                               + ((RULE_TOOL,) if self.config.enable_rules else ())
+                                               + ((OFFICIAL_TOOL,) if self.config.enable_official_sources or self.config.enable_rule_review else ())
+                                               + ((CANDIDATE_TOOL, DISCREPANCY_TOOL) if self.config.enable_rule_review else ()))
         if self.config.enable_incidents and incident_facade is None:
             from ..incidents import IncidentFacade
             incident_facade = IncidentFacade()
         self.incident_facade = incident_facade
+        if self.config.enable_resources and resource_catalog is None:
+            from ..resources import ResourceCatalog
+            resource_catalog = ResourceCatalog(clock=service.clock)
+        self.resource_catalog = resource_catalog
+        if self.config.enable_rules and rule_store is None:
+            from ..knowledge import ProgramRuleStore
+            rule_store = ProgramRuleStore(loader=service.read_program_catalog, version_loader=service.read_program_version)
+        self.rule_store = rule_store
+        if (self.config.enable_official_sources or self.config.enable_rule_review) and official_fetcher is None:
+            from ..knowledge.official import OfficialSourceFetcher
+            official_fetcher = OfficialSourceFetcher()
+        self.official_fetcher = official_fetcher
 
     def handle(self, token, command):
         result = self.service.execute(token, command)
@@ -49,7 +66,8 @@ class AgentRuntime:
         context = AgentContext(self.service, token, case_id, event_id, claim["run_id"],
                                snapshot["case_version"], time.monotonic() + self.config.timeout_seconds,
                                self.config.max_tool_calls, self.config.max_context_chars,
-                               incident_facade=self.incident_facade)
+                               incident_facade=self.incident_facade, resource_catalog=self.resource_catalog, rule_store=self.rule_store,
+                               official_fetcher=self.official_fetcher)
         # Stop at this message; never present a subsequently queued message as part of this turn.
         turns = snapshot["conversation"]["turns"]
         end = next(i for i, t in enumerate(turns) if t.get("event_id") == event_id and t["role"] == "assistant")

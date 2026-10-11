@@ -15,6 +15,7 @@ EVENTS = frozenset({
     "access_check_started", "access_identity_started", "access_profile_started",
     "access_form_started", "access_availability_started", "access_check_complete",
 })
+SMOKE_MODES = frozenset({"default", "incidents", "resources", "rules", "access", "knowledge", "fetch"})
 ACCESS_STATES = {
     "account_match": frozenset({"MATCH", "MISMATCH", "NOT_CHECKED", "UNKNOWN"}),
     "profile": frozenset({"ACTIVE", "NOT_APPLICABLE", "UNKNOWN"}),
@@ -34,6 +35,10 @@ CODES = frozenset({
     "agent_timeout", "agent_interrupted", "agent_limit_or_stop", "agent_tool_limit",
     "agent_context_limit", "invalid_agent_reply", "agent_run_inactive", "version_conflict",
     "required_fact_missing", "replay_failed", "incident_context_missing", "incident_sources_unavailable",
+    "resource_search_missing", "resource_attribution_invalid", "rule_lookup_missing",
+    "rule_attribution_invalid", "rule_side_effect_unexpected",
+    "official_fetch_missing", "knowledge_submission_missing", "knowledge_publication_unexpected", "knowledge_domain_changed",
+    "official_live_fetch_unavailable", "official_example_content_missing", "official_example_reply_missing",
     "AccessDeniedException", "ValidationException",
     "ResourceNotFoundException", "ThrottlingException", "ServiceQuotaExceededException",
     "ModelTimeoutException", "ModelNotReadyException", "ModelErrorException",
@@ -88,10 +93,14 @@ class SafeDiagnostics:
         self.lock = threading.Lock()
         self.provider_failure = None
 
-    def record(self, event, *, code=None, error_type=None, reason=None, access_status=None):
+    def record(self, event, *, code=None, error_type=None, reason=None, access_status=None, mode=None, retrieval_state=None):
         if event not in EVENTS:
             raise ValueError("Unknown diagnostic event.")
         entry = {"event": event, "elapsed_seconds": round(time.monotonic() - self.started, 3)}
+        if mode is not None:
+            entry["mode"] = mode if isinstance(mode, str) and mode in SMOKE_MODES else "unknown"
+        if retrieval_state is not None:
+            entry["retrieval_state"] = retrieval_state if isinstance(retrieval_state,str) and retrieval_state in ("available", "unavailable") else "unknown"
         if code is not None:
             entry["code"] = code if code in CODES else "other_failure"
         if error_type is not None:

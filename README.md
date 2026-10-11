@@ -18,7 +18,7 @@ The service listens on `127.0.0.1`. SQLite data survives restarts. This is a loc
 python3 -W error::ResourceWarning -m unittest discover -s tests -v
 ```
 
-The full suite has 99 checks using temporary databases. Ten real-SDK checks require the optional Strands dependency, and two configuration-loader checks require python-dotenv; absent dependencies produce explicit skips. No automated check loads the user's `.env.local` or calls Bedrock/public incident APIs. The HTTP checks require permission to bind an ephemeral loopback port. They cover case/intake access, restart/resume, replay/conflicts, validation and rollback; agent limits/failures, safe diagnostics and mocked Converse transport; and C03 source normalization, geography/freshness, provider failures, durable attribution, stale inputs and SDK integration. See the [C03 handoff](docs/incident-integration.md) for the separately recorded live public-source proof and the optional Sonnet/C03 smoke command.
+The full suite has 208 checks using temporary databases. Seventeen real-SDK checks require the optional Strands dependency, and two configuration-loader checks require python-dotenv; absent dependencies produce explicit skips. No automated check loads the user's `.env.local` or calls Bedrock/public incident APIs. The HTTP checks require permission to bind an ephemeral loopback port. They cover case/intake access, restart/resume, replay/conflicts, validation and rollback; agent limits/failures, safe diagnostics and mocked Converse transport; and C03 source normalization, geography/freshness, provider failures, durable attribution, stale inputs and SDK integration; reviewed C04 referrals and rule graphs; bounded official transport, separate public submissions, manual publication authority, immutable history, privacy, rollback and safe smoke modes. Current validation passes all 203 non-HTTP checks, including the strict fetch-example checks; five HTTP checks are blocked by this host's loopback-bind policy and need a local rerun. See the [C03 handoff](docs/incident-integration.md) for the separately recorded live public-source proof and the optional Sonnet/C03 smoke command.
 
 ## HTTP boundary for P2
 
@@ -108,7 +108,7 @@ Missing fields preserve existing answers. Explicit `null`, `unsure`, and empty s
 
 Command `occurred_at` supplies intake observation time. Creation can supply an optional `occurred_at`; otherwise observation time is the server receipt time. Creation plus intake commits atomically at case version 1. Later accepted intake commands increment the version once, including a completely skipped submission. Extra intake fields are rejected; additional interpreted facts still use the existing flexible `fact.correct` path.
 
-Intake persistence is available directly and through the opt-in `submit_intake` adapter. The agent can ask plain-text follow-up questions; structured choices, source retrieval, urgent referrals, and planning remain future slices. Resources stay labeled `not_requested`.
+Intake persistence is available directly and through the opt-in `submit_intake` adapter. The agent can ask plain-text follow-up questions; structured choices and planning remain future slices. C03 incident retrieval and C04 referrals/rules are independently opt-in; resources stay `not_requested` until their retrieval tool runs.
 
 ## P2 browser prototype
 
@@ -130,6 +130,68 @@ The mock case snapshot is stored under `stillhere.p2.mock-case.v1` in browser lo
 - The snapshot schema fixes top-level sections, typed conversation turns, and basic types. Populated source, action, financial, check-in, and other domain records remain to be defined by their owners. The descriptor schema validates kind/shape; record-reference validation belongs to the future publisher. The local validator implements only the schema vocabulary currently used; update it when introducing schema keywords.
 - Household sessions accept `chat`, `dashboard`, and `text_simulator`; they cannot acquire operator/system authority by selecting a channel or supplying a role. All other baseline command types return `unsupported_command` until their handlers exist. Keep P2 mocks labeled and separate from real endpoint capability.
 
-The full contract freeze still requires P2 review, remaining domain schemas, and fixtures. C01-facing Strands adapters and the bounded C02 runtime are ready for integration; the live Bedrock tool/update/reply/replay proof has passed. C03 incident adapters and the opt-in `get_incident_context` tool are now ready for integration, with live public-source checks and offline populated/failure/SDK evidence. Enable `STILLHERE_AGENT_ENABLE_INCIDENTS=true` to use them. C01 and the broader C02 component remain in progress. P2's C08 finance and C09 intake/chat prototypes are in progress in `frontend/`; remaining domain features, UI/API integration and deployment are pending. The next agent/tool slice is C04 resources and reviewed knowledge. C09 implementation is deferred for this chat. The [agent handoff](docs/agent-integration.md) covers the allowlist, durable chat states, configuration and next adapter rules. `CaseService` owns durable writes with backend-supplied authenticated context.
+The full contract freeze still requires P2 review, remaining domain schemas, and fixtures. C01-facing Strands adapters and the bounded C02 runtime are ready for integration; the live Bedrock tool/update/reply/replay proof has passed. C03 incident adapters and the opt-in `get_incident_context` tool are now ready for integration, with live public-source checks and offline populated/failure/SDK evidence. Enable `STILLHERE_AGENT_ENABLE_INCIDENTS=true` to use them. C01 and the broader C02 component remain in progress. P2's C08 finance and C09 intake/chat prototypes are in progress in `frontend/`; remaining domain features, UI/API integration and deployment are pending. C04's five bounded slices are ready for integration: reviewed referrals, scoped rule graphs, bounded official fetching, separate public candidate/discrepancy submission and local manual publication with immutable history. The earlier user-run rules/resources proofs passed; the new knowledge failure/discrepancy branch passes at 13.569 seconds. Successful national USAGov fetching and the strict model/reply/replay proof now pass; Colorado live candidate extraction remains pending. Full policy coverage and household eligibility remain unknown. See the [referral handoff](docs/resource-integration.md), [rule handoff](docs/program-rules-integration.md), and [fetch/review handoff and user test checklist](docs/knowledge-review-integration.md). Current validation passes 203 non-HTTP checks; five existing HTTP checks are blocked by this session's loopback-bind policy. The required live-fetch example now passes; C05's deterministic planner is next. C09 implementation is deferred for this chat. The [agent handoff](docs/agent-integration.md) covers the allowlist, durable chat states, configuration and next adapter rules. `CaseService` owns durable writes with backend-supplied authenticated context.
 
 For local reset, stop the server and remove `var/cases.sqlite3` and any matching `-wal`/`-shm` files. This erases synthetic cases, audit events, and sessions together. The database, `.env`/`.env.*` credential files, and `.references/` directory are ignored by Git; blank `.env.example` templates may be tracked. The project Codex permission profile denies `.env` and `.env.local` reads when active; managed/current-session policy can override selection. `AGENTS.md` also instructs secret avoidance. See the [secret controls](docs/agent-integration.md#secret-file-controls). New databases use private file permissions. Any future browser persistence needs the specified opt-in/erase controls.
+
+
+## C04 final-slice checks
+
+Run the full suite above, then the disposable offline workflow:
+
+```sh
+.venv/bin/python -m backend.stillhere.knowledge.smoke
+```
+
+The user runs the new credential-dependent proof with the working Sonnet 4.5
+configuration:
+
+```sh
+.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --knowledge
+```
+
+It verifies pending submissions, unchanged published policy/household domains,
+durable reply and replay. Its safe log records `mode: knowledge` and
+`retrieval_state`; an unavailable-source pass leaves successful extraction
+unverified. Enable the corresponding service tools with
+`STILLHERE_AGENT_ENABLE_OFFICIAL_SOURCES=true` and/or
+`STILLHERE_AGENT_ENABLE_RULE_REVIEW=true` (review includes fetch). Publication is
+an explicit local administrator operation outside the household tool registry.
+
+User verification: the offline knowledge workflow passed. The safe live log
+confirms `mode: knowledge`, `smoke_passed` at 13.569 seconds and
+`retrieval_state: unavailable`, verifying the real-model fallback/discrepancy,
+durable reply and replay path. The log does not record why fetching failed;
+the later national `--fetch` proof passes; Colorado live candidate extraction remains pending.
+
+To diagnose an unavailable official source without credentials or a model call:
+
+```sh
+.venv/bin/python -m backend.stillhere.knowledge.check_source
+```
+
+It prints a safe failure category or HTTP status using the same public-page
+transport. See the [diagnostic guide](docs/knowledge-review-integration.md#diagnose-an-unavailable-public-source).
+
+
+The required **successful C04 fetch example before C05 now passes**. Use the
+approved national USAGov source, which has no seeded fallback:
+
+```sh
+.venv/bin/python -m backend.stillhere.knowledge.fetch_smoke
+.venv/bin/python -m backend.stillhere.agent.smoke --env-file .env.local --fetch
+```
+
+The first command requires fresh useful public text and displays an actual
+excerpt/source/time/hash without credentials or a model call. The second is
+user-run and additionally requires Sonnet's source-backed saved reply, unchanged
+domains/policy and replay. An unavailable source fails this strict mode.
+The original DMV `--knowledge` fallback proof remains separate. National guidance
+cannot be submitted as Colorado rule evidence. [Example and verification gate](docs/knowledge-review-integration.md#working-live-fetch-example--verified).
+
+Confirmed October 11: the credential-free fetch returned 1,524 live characters
+and actual public guidance; the strict Bedrock proof passed at 13.265 seconds
+with one completed tool call and `mode: fetch` / available retrieval in the safe
+log. Saved sourced reply, unchanged domains/policy and replay passed. This clears
+the live-fetch prerequisite for C05; national guidance remains unreviewed, and
+Colorado policy extraction/HTTP/shared-review checks remain separate.

@@ -658,6 +658,9 @@
               "items": {
                 "type": "object"
               }
+            },
+            "search": {
+              "$ref": "#/$defs/ResourceSearchMetadata"
             }
           }
         },
@@ -1823,6 +1826,1713 @@
           "items": {
             "$ref": "#/$defs/Issue"
           }
+        }
+      }
+    },
+    "ResourceToolArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location_scope"
+      ],
+      "properties": {
+        "location_scope": {
+          "enum": [
+            "current",
+            "damaged"
+          ]
+        }
+      }
+    },
+    "ResourceQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "location_scope",
+        "geography",
+        "geography_state",
+        "need_kinds",
+        "needs_state"
+      ],
+      "properties": {
+        "location_scope": {
+          "enum": [
+            "current",
+            "damaged"
+          ]
+        },
+        "geography": {
+          "$ref": "#/$defs/IncidentGeography"
+        },
+        "geography_state": {
+          "enum": [
+            "reported",
+            "unknown",
+            "invalid"
+          ]
+        },
+        "need_kinds": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "enum": [
+              "shelter",
+              "food_water",
+              "health_support",
+              "transport",
+              "lost_documents",
+              "aid_applications",
+              "managing_money"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "needs_state": {
+          "enum": [
+            "reported",
+            "unknown",
+            "invalid"
+          ]
+        }
+      }
+    },
+    "ResourceCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "country",
+        "state"
+      ],
+      "properties": {
+        "country": {
+          "enum": [
+            "US"
+          ]
+        },
+        "state": {
+          "anyOf": [
+            {
+              "enum": [
+                "AK",
+                "AL",
+                "AR",
+                "AS",
+                "AZ",
+                "CA",
+                "CO",
+                "CT",
+                "DC",
+                "DE",
+                "FL",
+                "GA",
+                "GU",
+                "HI",
+                "IA",
+                "ID",
+                "IL",
+                "IN",
+                "KS",
+                "KY",
+                "LA",
+                "MA",
+                "MD",
+                "ME",
+                "MI",
+                "MN",
+                "MO",
+                "MP",
+                "MS",
+                "MT",
+                "NC",
+                "ND",
+                "NE",
+                "NH",
+                "NJ",
+                "NM",
+                "NV",
+                "NY",
+                "OH",
+                "OK",
+                "OR",
+                "PA",
+                "PR",
+                "RI",
+                "SC",
+                "SD",
+                "TN",
+                "TX",
+                "UT",
+                "VA",
+                "VI",
+                "VT",
+                "WA",
+                "WI",
+                "WV",
+                "WY"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ResourceSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "url",
+        "issuer",
+        "scope",
+        "retrieved_at",
+        "reviewed_at",
+        "updated_at",
+        "expires_at",
+        "verification_state",
+        "freshness",
+        "data_mode",
+        "supporting_section"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "scope": {
+          "$ref": "#/$defs/ResourceCoverage"
+        },
+        "retrieved_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "reviewed_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "verification_state": {
+          "enum": [
+            "reviewed_referral"
+          ]
+        },
+        "freshness": {
+          "enum": [
+            "current",
+            "stale",
+            "unknown"
+          ]
+        },
+        "data_mode": {
+          "enum": [
+            "seeded"
+          ]
+        },
+        "supporting_section": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      }
+    },
+    "ResourceReferral": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "need_kinds",
+        "coverage",
+        "contact",
+        "summary",
+        "requirements",
+        "availability",
+        "household_eligibility",
+        "source_ids",
+        "data_mode"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "kind": {
+          "enum": [
+            "referral"
+          ]
+        },
+        "need_kinds": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "enum": [
+              "shelter",
+              "food_water",
+              "health_support",
+              "transport",
+              "lost_documents",
+              "aid_applications",
+              "managing_money"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "coverage": {
+          "$ref": "#/$defs/ResourceCoverage"
+        },
+        "contact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "phone"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "phone": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "requirements": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "items"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "unknown"
+              ]
+            },
+            "items": {
+              "type": "array",
+              "maxItems": 0,
+              "items": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "state",
+            "observed_at",
+            "source_ids"
+          ],
+          "properties": {
+            "state": {
+              "enum": [
+                "unknown"
+              ]
+            },
+            "observed_at": {
+              "type": "null"
+            },
+            "source_ids": {
+              "type": "array",
+              "maxItems": 0,
+              "items": {
+                "$ref": "#/$defs/Id"
+              }
+            }
+          }
+        },
+        "household_eligibility": {
+          "enum": [
+            "unknown"
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        },
+        "data_mode": {
+          "enum": [
+            "seeded"
+          ]
+        }
+      }
+    },
+    "ResourceSearchMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query",
+        "input_case_version",
+        "retrieved_at",
+        "catalog_version",
+        "freshness",
+        "truncated"
+      ],
+      "properties": {
+        "query": {
+          "$ref": "#/$defs/ResourceQuery"
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retrieved_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "catalog_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "freshness": {
+          "enum": [
+            "current",
+            "stale",
+            "unknown"
+          ]
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ResourceSearchResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "state",
+        "items",
+        "sources",
+        "search",
+        "notices"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "state": {
+          "enum": [
+            "available",
+            "no_match",
+            "unavailable"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/ResourceReferral"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "maxItems": 25,
+          "items": {
+            "$ref": "#/$defs/ResourceSource"
+          }
+        },
+        "search": {
+          "$ref": "#/$defs/ResourceSearchMetadata"
+        },
+        "notices": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        }
+      }
+    },
+    "ReviewedResourceCatalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "items",
+        "sources"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/ResourceReferral"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/ResourceSource"
+          }
+        }
+      }
+    },
+    "ProgramRuleToolArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program_id"
+      ],
+      "properties": {
+        "program_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        }
+      }
+    },
+    "ProgramRuleQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program_id",
+        "requested_version",
+        "issuing_state",
+        "jurisdiction_state",
+        "input_case_version",
+        "as_of"
+      ],
+      "properties": {
+        "program_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "requested_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "issuing_state": {
+          "anyOf": [
+            {
+              "enum": [
+                "AK",
+                "AL",
+                "AR",
+                "AS",
+                "AZ",
+                "CA",
+                "CO",
+                "CT",
+                "DC",
+                "DE",
+                "FL",
+                "GA",
+                "GU",
+                "HI",
+                "IA",
+                "ID",
+                "IL",
+                "IN",
+                "KS",
+                "KY",
+                "LA",
+                "MA",
+                "MD",
+                "ME",
+                "MI",
+                "MN",
+                "MO",
+                "MP",
+                "MS",
+                "MT",
+                "NC",
+                "ND",
+                "NE",
+                "NH",
+                "NJ",
+                "NM",
+                "NV",
+                "NY",
+                "OH",
+                "OK",
+                "OR",
+                "PA",
+                "PR",
+                "RI",
+                "SC",
+                "SD",
+                "TN",
+                "TX",
+                "UT",
+                "VA",
+                "VI",
+                "VT",
+                "WA",
+                "WI",
+                "WV",
+                "WY"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "jurisdiction_state": {
+          "enum": [
+            "reported",
+            "unknown",
+            "conflicting",
+            "stale",
+            "invalid"
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "as_of": {
+          "$ref": "#/$defs/Instant"
+        }
+      }
+    },
+    "RuleRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "kind",
+        "label",
+        "expected",
+        "timing",
+        "evidence_state"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "kind": {
+          "enum": [
+            "fact",
+            "evidence",
+            "action",
+            "authority_confirmation"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "expected": {
+          "type": "boolean"
+        },
+        "timing": {
+          "enum": [
+            "before_start",
+            "during_application",
+            "before_receipt"
+          ]
+        },
+        "evidence_state": {
+          "enum": [
+            "unknown"
+          ]
+        }
+      }
+    },
+    "RuleRequirementNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "operator",
+        "children",
+        "requirement",
+        "source_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "operator": {
+          "enum": [
+            "all_of",
+            "any_of",
+            "requirement"
+          ]
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        },
+        "requirement": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleRequirement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "ProgramRulePath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "execution_mode",
+        "official_url",
+        "root_id",
+        "nodes",
+        "fee_cents",
+        "unresolved_requirements"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "execution_mode": {
+          "enum": [
+            "online",
+            "in_person",
+            "mail"
+          ]
+        },
+        "official_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "root_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "nodes": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/RuleRequirementNode"
+          }
+        },
+        "fee_cents": {
+          "type": "null"
+        },
+        "unresolved_requirements": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "ProgramRuleSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "url",
+        "issuer",
+        "jurisdiction",
+        "retrieved_at",
+        "updated_at",
+        "reviewed_at",
+        "expires_at",
+        "verification_state",
+        "freshness",
+        "data_mode",
+        "supporting_sections"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "jurisdiction": {
+          "$ref": "#/$defs/ResourceCoverage"
+        },
+        "retrieved_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewed_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "verification_state": {
+          "enum": [
+            "official_page_reviewed"
+          ]
+        },
+        "freshness": {
+          "enum": [
+            "current",
+            "stale",
+            "unknown"
+          ]
+        },
+        "data_mode": {
+          "enum": [
+            "seeded",
+            "cached"
+          ]
+        },
+        "supporting_sections": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "ProgramRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "program_id",
+        "version",
+        "issuer",
+        "jurisdiction",
+        "incident_id",
+        "credential_kind",
+        "effective_from",
+        "effective_to",
+        "reviewed_at",
+        "review_expires_at",
+        "review_state",
+        "publication_state",
+        "data_mode",
+        "source_ids",
+        "paths",
+        "coverage_complete",
+        "limitations"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "program_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "jurisdiction": {
+          "$ref": "#/$defs/ResourceCoverage"
+        },
+        "incident_id": {
+          "type": "null"
+        },
+        "credential_kind": {
+          "enum": [
+            "state_id"
+          ]
+        },
+        "effective_from": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effective_to": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reviewed_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "review_expires_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "review_state": {
+          "enum": [
+            "reviewed"
+          ]
+        },
+        "publication_state": {
+          "enum": [
+            "published"
+          ]
+        },
+        "data_mode": {
+          "enum": [
+            "seeded",
+            "cached"
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Id"
+          },
+          "uniqueItems": true
+        },
+        "paths": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/ProgramRulePath"
+          }
+        },
+        "coverage_complete": {
+          "enum": [
+            false
+          ],
+          "type": "boolean"
+        },
+        "limitations": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          }
+        }
+      }
+    },
+    "PublishedProgramRuleCatalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "rules",
+        "sources"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "rules": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/ProgramRule"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/ProgramRuleSource"
+          }
+        }
+      }
+    },
+    "ProgramRuleResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "state",
+        "query",
+        "catalog_version",
+        "rules",
+        "sources",
+        "household_eligibility",
+        "referral_url",
+        "notices"
+      ],
+      "properties": {
+        "contract_version": {
+          "enum": [
+            "0.1"
+          ]
+        },
+        "state": {
+          "enum": [
+            "available",
+            "no_match",
+            "unknown",
+            "conflicting",
+            "stale",
+            "unavailable",
+            "conflict"
+          ]
+        },
+        "query": {
+          "$ref": "#/$defs/ProgramRuleQuery"
+        },
+        "catalog_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9._-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rules": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/ProgramRule"
+          }
+        },
+        "sources": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/ProgramRuleSource"
+          }
+        },
+        "household_eligibility": {
+          "enum": [
+            "unknown"
+          ]
+        },
+        "referral_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "notices": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        }
+      }
+    },
+    "OfficialSourceToolArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id"
+      ],
+      "properties": {
+        "source_id": {
+          "enum": [
+            "source_rule_co_replacement",
+            "source_rule_co_renewal",
+            "source_rule_co_documents",
+            "source_rule_co_exceptions",
+            "source_usagov_lost_documents"
+          ]
+        }
+      }
+    },
+    "OfficialSourceReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "url",
+        "issuer",
+        "jurisdiction",
+        "retrieved_at",
+        "expires_at",
+        "updated_at",
+        "data_mode",
+        "freshness",
+        "content",
+        "content_sha256",
+        "truncated",
+        "review_state"
+      ],
+      "properties": {
+        "source_id": {
+          "enum": [
+            "source_rule_co_replacement",
+            "source_rule_co_renewal",
+            "source_rule_co_documents",
+            "source_rule_co_exceptions",
+            "source_usagov_lost_documents"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "issuer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "jurisdiction": {
+          "$ref": "#/$defs/ResourceCoverage"
+        },
+        "retrieved_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "expires_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "updated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Instant"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "data_mode": {
+          "enum": [
+            "live",
+            "cached",
+            "seeded"
+          ]
+        },
+        "freshness": {
+          "enum": [
+            "current",
+            "stale"
+          ]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12000
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "review_state": {
+          "enum": [
+            "unreviewed"
+          ]
+        }
+      }
+    },
+    "OfficialFetchResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "source_id",
+        "requested_at",
+        "state",
+        "receipt",
+        "notices"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "requested_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "state": {
+          "enum": [
+            "available",
+            "unavailable",
+            "no_match"
+          ]
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OfficialSourceReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notices": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        }
+      }
+    },
+    "RuleCandidateToolArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program_id",
+        "base_version",
+        "source_id",
+        "requirement_keys",
+        "relationship",
+        "evidence_start",
+        "evidence_end"
+      ],
+      "properties": {
+        "program_id": {
+          "enum": [
+            "co_state_id_replacement",
+            "co_state_id_proof_options"
+          ]
+        },
+        "base_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "source_id": {
+          "enum": [
+            "source_rule_co_replacement",
+            "source_rule_co_renewal",
+            "source_rule_co_documents",
+            "source_rule_co_exceptions"
+          ]
+        },
+        "requirement_keys": {
+          "type": "array",
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "credential_lost",
+              "credential_destroyed",
+              "online_renewal_eligibility_confirmed",
+              "prior_credential_details_available",
+              "email_access",
+              "payment_method_available",
+              "office_appointment",
+              "office_visit",
+              "renewal_documents_available",
+              "renewal_fee_payable",
+              "applicable_checklist_confirmed",
+              "valid_us_passport",
+              "certified_us_birth_certificate",
+              "qualifying_list_b_document",
+              "ssn_verbal_available",
+              "ssn_document_available",
+              "two_current_address_proofs",
+              "exceptions_route_confirmed",
+              "incomplete_application_notice",
+              "alternative_documents_available",
+              "lawful_presence_proof_available"
+            ]
+          }
+        },
+        "relationship": {
+          "enum": [
+            "all_of",
+            "any_of"
+          ]
+        },
+        "evidence_start": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 11999
+        },
+        "evidence_end": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12000
+        }
+      }
+    },
+    "RuleDiscrepancyToolArguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "program_id",
+        "base_version",
+        "source_id",
+        "reason"
+      ],
+      "properties": {
+        "program_id": {
+          "enum": [
+            "co_state_id_replacement",
+            "co_state_id_proof_options"
+          ]
+        },
+        "base_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "source_id": {
+          "enum": [
+            "source_rule_co_replacement",
+            "source_rule_co_renewal",
+            "source_rule_co_documents",
+            "source_rule_co_exceptions"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "requirements_changed",
+            "eligibility_changed",
+            "fee_unknown",
+            "source_unavailable",
+            "source_text_mismatch"
+          ]
+        },
+        "evidence_start": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 11999
+        },
+        "evidence_end": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12000
+        }
+      }
+    },
+    "RuleReviewCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "program_id",
+        "base_version",
+        "jurisdiction",
+        "created_at",
+        "revision",
+        "review_state",
+        "arguments",
+        "source_state",
+        "receipt",
+        "evidence_excerpt"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Id"
+        },
+        "kind": {
+          "enum": [
+            "candidate",
+            "discrepancy"
+          ]
+        },
+        "program_id": {
+          "enum": [
+            "co_state_id_replacement",
+            "co_state_id_proof_options"
+          ]
+        },
+        "base_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "jurisdiction": {
+          "$ref": "#/$defs/ResourceCoverage"
+        },
+        "created_at": {
+          "$ref": "#/$defs/Instant"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "review_state": {
+          "enum": [
+            "pending",
+            "rejected",
+            "resolved",
+            "published"
+          ]
+        },
+        "arguments": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RuleCandidateToolArguments"
+            },
+            {
+              "$ref": "#/$defs/RuleDiscrepancyToolArguments"
+            }
+          ]
+        },
+        "source_state": {
+          "enum": [
+            "available",
+            "unavailable"
+          ]
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/OfficialSourceReceipt"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_excerpt": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 800
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "KnowledgeSubmissionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "state",
+        "candidate_id",
+        "kind",
+        "review_state",
+        "publication_state",
+        "input_case_version",
+        "notices"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "state": {
+          "enum": [
+            "submitted",
+            "already_submitted",
+            "conflict"
+          ]
+        },
+        "candidate_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "kind": {
+          "enum": [
+            "candidate",
+            "discrepancy"
+          ]
+        },
+        "review_state": {
+          "enum": [
+            "pending"
+          ]
+        },
+        "publication_state": {
+          "enum": [
+            "unpublished"
+          ]
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000000
+        },
+        "notices": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        }
+      }
+    },
+    "RulePublicationBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule",
+        "sources"
+      ],
+      "properties": {
+        "rule": {
+          "$ref": "#/$defs/ProgramRule"
+        },
+        "sources": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/ProgramRuleSource"
+          }
+        }
+      }
+    },
+    "ManualRuleReviewRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "event_id",
+        "candidate_id",
+        "expected_candidate_revision",
+        "expected_catalog_version",
+        "decision",
+        "reason",
+        "publication"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "candidate_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "expected_candidate_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "expected_catalog_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "decision": {
+          "enum": [
+            "publish",
+            "reject",
+            "resolve"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "evidence_confirmed",
+            "unsupported_claim",
+            "incomplete_scope",
+            "discrepancy_resolved"
+          ]
+        },
+        "publication": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RulePublicationBundle"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ManualRuleReviewResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "event_id",
+        "status",
+        "candidate_id",
+        "review_state",
+        "candidate_revision",
+        "catalog_version",
+        "published_version"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "0.1"
+        },
+        "event_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "status": {
+          "enum": [
+            "applied",
+            "already_applied"
+          ]
+        },
+        "candidate_id": {
+          "$ref": "#/$defs/Id"
+        },
+        "review_state": {
+          "enum": [
+            "published",
+            "rejected",
+            "resolved"
+          ]
+        },
+        "candidate_revision": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 1000000
+        },
+        "catalog_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "published_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     }

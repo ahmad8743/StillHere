@@ -1,0 +1,714 @@
+{
+  "version": "2026-10-10.rules.2",
+  "rules": [
+    {
+      "id": "rule_co_state_id_replacement",
+      "program_id": "co_state_id_replacement",
+      "version": "2026-10-10.1",
+      "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+      "jurisdiction": {
+        "country": "US",
+        "state": "CO"
+      },
+      "incident_id": null,
+      "credential_kind": "state_id",
+      "effective_from": null,
+      "effective_to": null,
+      "reviewed_at": "2026-10-11T02:24:54Z",
+      "review_expires_at": "2026-11-10T02:24:54Z",
+      "review_state": "reviewed",
+      "publication_state": "published",
+      "data_mode": "seeded",
+      "source_ids": [
+        "source_rule_co_replacement",
+        "source_rule_co_renewal"
+      ],
+      "paths": [
+        {
+          "id": "co_id_online_renewal",
+          "title": "Check online renewal as an ID replacement route",
+          "execution_mode": "online",
+          "official_url": "https://mydmv.colorado.gov/e-Services/?Link=OnlineRenewal",
+          "root_id": "online_root",
+          "nodes": [
+            {
+              "id": "online_root",
+              "operator": "all_of",
+              "children": [
+                "condition",
+                "eligibility",
+                "details",
+                "email",
+                "payment"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "condition",
+              "operator": "any_of",
+              "children": [
+                "lost",
+                "destroyed"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "lost",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "credential_lost",
+                "kind": "fact",
+                "label": "ID reported lost",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "destroyed",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "credential_destroyed",
+                "kind": "fact",
+                "label": "ID reported severely damaged",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "eligibility",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "online_renewal_eligibility_confirmed",
+                "kind": "authority_confirmation",
+                "label": "Confirm full eligibility with DMV",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_renewal"
+              ]
+            },
+            {
+              "id": "details",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "prior_credential_details_available",
+                "kind": "evidence",
+                "label": "Prior issue date and credential number available",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_renewal"
+              ]
+            },
+            {
+              "id": "email",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "email_access",
+                "kind": "fact",
+                "label": "Email access available",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_renewal"
+              ]
+            },
+            {
+              "id": "payment",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "payment_method_available",
+                "kind": "fact",
+                "label": "Accepted payment method available",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_renewal"
+              ]
+            }
+          ],
+          "fee_cents": null,
+          "unresolved_requirements": [
+            "Full online eligibility remains subject to DMV checks; this graph does not enumerate every condition.",
+            "Renewal uses prior credential details; their values are entered only at the official portal."
+          ]
+        },
+        {
+          "id": "co_id_office_renewal",
+          "title": "Arrange an office renewal for the missing ID",
+          "execution_mode": "in_person",
+          "official_url": "https://dmv.colorado.gov/AppointmentScheduling",
+          "root_id": "office_root",
+          "nodes": [
+            {
+              "id": "office_root",
+              "operator": "all_of",
+              "children": [
+                "condition",
+                "appointment",
+                "visit",
+                "documents",
+                "payment"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "condition",
+              "operator": "any_of",
+              "children": [
+                "lost",
+                "destroyed"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "lost",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "credential_lost",
+                "kind": "fact",
+                "label": "ID reported lost",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "destroyed",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "credential_destroyed",
+                "kind": "fact",
+                "label": "ID reported severely damaged",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "appointment",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "office_appointment",
+                "kind": "action",
+                "label": "Schedule a state driver-license-office appointment",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_renewal"
+              ]
+            },
+            {
+              "id": "visit",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "office_visit",
+                "kind": "action",
+                "label": "Attend the office",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_replacement"
+              ]
+            },
+            {
+              "id": "documents",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "renewal_documents_available",
+                "kind": "evidence",
+                "label": "Confirm the required renewal documents",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_renewal"
+              ]
+            },
+            {
+              "id": "payment",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "renewal_fee_payable",
+                "kind": "fact",
+                "label": "Confirm renewal fee payment",
+                "expected": true,
+                "timing": "during_application",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_renewal"
+              ]
+            }
+          ],
+          "fee_cents": null,
+          "unresolved_requirements": [
+            "Accepted proof documents depend on the applicable DMV checklist; alternatives are not normalized here.",
+            "Transport, appointment access and the current fee remain unknown."
+          ]
+        }
+      ],
+      "coverage_complete": false,
+      "limitations": [
+        "This seed covers lost or severely damaged Colorado state IDs and partial renewal routes, not driver-license duplicates or mail eligibility.",
+        "Policy effective dates are not stated on these pages. The review date is not an effective date.",
+        "Household eligibility and satisfaction of prerequisites are not evaluated."
+      ]
+    },
+    {
+      "id": "rule_co_state_id_proof_options",
+      "program_id": "co_state_id_proof_options",
+      "version": "2026-10-10.1",
+      "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+      "jurisdiction": {
+        "country": "US",
+        "state": "CO"
+      },
+      "incident_id": null,
+      "credential_kind": "state_id",
+      "effective_from": null,
+      "effective_to": null,
+      "reviewed_at": "2026-10-11T03:53:07Z",
+      "review_expires_at": "2026-11-10T03:53:07Z",
+      "review_state": "reviewed",
+      "publication_state": "published",
+      "data_mode": "seeded",
+      "source_ids": [
+        "source_rule_co_documents",
+        "source_rule_co_exceptions"
+      ],
+      "coverage_complete": false,
+      "paths": [
+        {
+          "id": "co_standard_identity_proofs",
+          "title": "Confirm the applicable standard document checklist",
+          "execution_mode": "in_person",
+          "official_url": "https://dmv.colorado.gov/documents",
+          "root_id": "proof_root",
+          "nodes": [
+            {
+              "id": "proof_root",
+              "operator": "all_of",
+              "children": [
+                "applicable_checklist_confirmed",
+                "identity_options",
+                "ssn_options",
+                "two_current_address_proofs",
+                "office_appointment"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "applicable_checklist_confirmed",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "applicable_checklist_confirmed",
+                "kind": "authority_confirmation",
+                "label": "DMV confirms this identification checklist applies",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "identity_options",
+              "operator": "any_of",
+              "children": [
+                "valid_us_passport",
+                "identity_pair"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "valid_us_passport",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "valid_us_passport",
+                "kind": "evidence",
+                "label": "Unexpired U.S. passport or passport card",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "identity_pair",
+              "operator": "all_of",
+              "children": [
+                "certified_us_birth_certificate",
+                "qualifying_list_b_document"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "certified_us_birth_certificate",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "certified_us_birth_certificate",
+                "kind": "evidence",
+                "label": "Qualifying original or certified U.S. birth certificate",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "qualifying_list_b_document",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "qualifying_list_b_document",
+                "kind": "evidence",
+                "label": "Additional qualifying List B identity document",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "ssn_options",
+              "operator": "any_of",
+              "children": [
+                "ssn_verbal_available",
+                "ssn_document_available"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "ssn_verbal_available",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "ssn_verbal_available",
+                "kind": "fact",
+                "label": "SSN can be provided verbally at the DMV appointment",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "ssn_document_available",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "ssn_document_available",
+                "kind": "evidence",
+                "label": "Accepted SSN proof document available",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "two_current_address_proofs",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "two_current_address_proofs",
+                "kind": "evidence",
+                "label": "Two qualifying current Colorado address proofs; electronic versions allowed",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            },
+            {
+              "id": "office_appointment",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "office_appointment",
+                "kind": "action",
+                "label": "Arrange the applicable DMV office appointment",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_documents"
+              ]
+            }
+          ],
+          "fee_cents": null,
+          "unresolved_requirements": [
+            "This is a subset of the first-application checklist for its stated applicant groups. DMV must confirm applicability to this household or renewal.",
+            "Document validity, original/certified form, name changes, translations and additional alternatives require the full official checklist."
+          ]
+        },
+        {
+          "id": "co_identity_exceptions",
+          "title": "Request review of missing-document alternatives",
+          "execution_mode": "in_person",
+          "official_url": "https://dmv.colorado.gov/applicants-who-are-us-citizens-and-permanent-residents",
+          "root_id": "exceptions_root",
+          "nodes": [
+            {
+              "id": "exceptions_root",
+              "operator": "all_of",
+              "children": [
+                "exceptions_route_confirmed",
+                "incomplete_application_notice",
+                "alternative_documents_available",
+                "lawful_presence_proof_available"
+              ],
+              "requirement": null,
+              "source_ids": [
+                "source_rule_co_exceptions"
+              ]
+            },
+            {
+              "id": "exceptions_route_confirmed",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "exceptions_route_confirmed",
+                "kind": "authority_confirmation",
+                "label": "DMV confirms the exceptions route and applicable scope",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_exceptions"
+              ]
+            },
+            {
+              "id": "incomplete_application_notice",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "incomplete_application_notice",
+                "kind": "evidence",
+                "label": "Notice of Incomplete Application from initial DMV visit",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_exceptions"
+              ]
+            },
+            {
+              "id": "alternative_documents_available",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "alternative_documents_available",
+                "kind": "evidence",
+                "label": "Applicable originals/certified alternatives from DR 2469",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_exceptions"
+              ]
+            },
+            {
+              "id": "lawful_presence_proof_available",
+              "operator": "requirement",
+              "children": [],
+              "requirement": {
+                "key": "lawful_presence_proof_available",
+                "kind": "authority_confirmation",
+                "label": "Applicable lawful-presence evidence confirmed by DMV",
+                "expected": true,
+                "timing": "before_start",
+                "evidence_state": "unknown"
+              },
+              "source_ids": [
+                "source_rule_co_exceptions"
+              ]
+            }
+          ],
+          "fee_cents": null,
+          "unresolved_requirements": [
+            "Exceptions are discretionary and require DMV review; no document combination or favorable outcome is guaranteed.",
+            "Permanent residents have no alternative lawful-presence documents under this page; applicant category and qualifying evidence remain unknown."
+          ]
+        }
+      ],
+      "limitations": [
+        "This reference must not automatically apply first-application requirements to an ordinary renewal. Qualifying applicant category stays unknown.",
+        "This covers selected proof alternatives; other List A/List B documents, special applicant groups, translations and name changes are not fully normalized.",
+        "Only public availability requirements are represented. Never collect SSN, credential numbers, private documents or household eligibility into shared knowledge."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "source_rule_co_replacement",
+      "url": "https://dmv.colorado.gov/replace-your-lost-stolen-or-destroyed-driver-license/permit/cdl/id",
+      "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+      "jurisdiction": {
+        "country": "US",
+        "state": "CO"
+      },
+      "retrieved_at": "2026-10-11T02:24:54Z",
+      "updated_at": null,
+      "reviewed_at": "2026-10-11T02:24:54Z",
+      "expires_at": "2026-11-10T02:24:54Z",
+      "verification_state": "official_page_reviewed",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_sections": [
+        "Lost or Destroyed / Identification Card"
+      ]
+    },
+    {
+      "id": "source_rule_co_renewal",
+      "url": "https://dmv.colorado.gov/renew-your-colorado-driver-license-permit-or-id-card",
+      "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+      "jurisdiction": {
+        "country": "US",
+        "state": "CO"
+      },
+      "retrieved_at": "2026-10-11T02:24:54Z",
+      "updated_at": null,
+      "reviewed_at": "2026-10-11T02:24:54Z",
+      "expires_at": "2026-11-10T02:24:54Z",
+      "verification_state": "official_page_reviewed",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_sections": [
+        "Renew Online",
+        "Online Renewal Eligibility and Requirements Questions",
+        "Renew In-Person",
+        "Required Documents: What to Bring to Your Appointment"
+      ]
+    },
+    {
+      "id": "source_rule_co_documents",
+      "url": "https://dmv.colorado.gov/documents",
+      "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+      "jurisdiction": {
+        "country": "US",
+        "state": "CO"
+      },
+      "retrieved_at": "2026-10-11T03:53:07Z",
+      "updated_at": null,
+      "reviewed_at": "2026-10-11T03:53:07Z",
+      "expires_at": "2026-11-10T03:53:07Z",
+      "verification_state": "official_page_reviewed",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_sections": [
+        "Applicant scope",
+        "Identity and Lawful Presence (Non-CDL)",
+        "Social Security Number",
+        "Two Proofs of Colorado Address",
+        "Exceptions Processing"
+      ]
+    },
+    {
+      "id": "source_rule_co_exceptions",
+      "url": "https://dmv.colorado.gov/applicants-who-are-us-citizens-and-permanent-residents",
+      "issuer": "Colorado Department of Revenue, Division of Motor Vehicles",
+      "jurisdiction": {
+        "country": "US",
+        "state": "CO"
+      },
+      "retrieved_at": "2026-10-11T03:53:07Z",
+      "updated_at": null,
+      "reviewed_at": "2026-10-11T03:53:07Z",
+      "expires_at": "2026-11-10T03:53:07Z",
+      "verification_state": "official_page_reviewed",
+      "freshness": "current",
+      "data_mode": "seeded",
+      "supporting_sections": [
+        "Notice of Incomplete Application",
+        "Alternative Documents",
+        "Permanent Resident lawful-presence limits",
+        "Exceptions Processing Notices"
+      ]
+    }
+  ]
+}
