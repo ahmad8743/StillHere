@@ -122,7 +122,15 @@ The engine supports `record_transfer`, `reverse_event`, `reverse_record_update`,
 
 See [the P2 finance handoff](docs/p2-finance-handoff.md) for command mapping, proposed schemas, supported operations, and remaining C08 work.
 
-The mock case snapshot is stored under `stillhere.p2.mock-case.v1` in browser local storage. To restore its initial fixture, run `StillHereMockService.reset()` in the browser console. This resets only the mock case, not the separate chat demo state.
+**Check-ins:** Choose **Menu → Check-ins** for optional scheduling, replies/later time, pause/stop, help requests, and separately consented manual location sharing/removal. The page shows original report/receipt times, stale location and overdue labels, and visibly unsent changes with explicit retry/conflict review. Expand **Demo controls** to move the fixture clock or simulate offline sending. Nothing runs in the background or contacts a person. This is a C11 mock; C07/backend integration and full C13 replay remain pending. See [the C11 handoff](docs/p2-check-in-handoff.md) for proposed commands and verification limits.
+
+The mock case snapshot is stored under `stillhere.p2.mock-case.v1` in browser local storage. To restore its initial fixture and check-in clock, run `StillHereMockService.reset()` in the browser console. This does not reset separate chat state or an unsent C11 change; for a fresh check-in walkthrough, also remove `stillhere.p2.check-in-pending.v1:case_demo_p2` from browser storage and reload.
+
+## Optional Plaid Sandbox setup
+
+The finance page now includes an optional **Connect a test bank** section. A separate local connector keeps credentials/access tokens on the server, reads synthetic checking/savings balances and transaction history, supports reviewed balance copies through the mock finance adapter, and disconnects the Sandbox Item. P1's backend remains separate.
+
+Create a [Plaid developer account](https://dashboard.plaid.com/), add the Sandbox client ID and secret to the ignored `.env.plaid` file (copy `.env.example` if needed), then run `npm run plaid:sandbox`. Open the printed `http://127.0.0.1:4100/#finance` address. The connector requires Node.js 18+ and adds no dependencies. It supports Sandbox only; access tokens/sync state are memory-only until P1 supplies protected durable storage. Transactions are review-only, and budget balance copies require the existing October 10 demo planning date. [Full setup and P1 handoff](docs/p2-plaid-setup.md).
 
 ## Integration rules
 

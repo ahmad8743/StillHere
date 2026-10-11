@@ -1,7 +1,11 @@
 /* Manual finance controls use the case command adapter and never store another ledger. */
 (() => {
   const money = (cents) => cents === null ? 'Not known' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
-  const sourceName = (source, index = 0) => `${source.type === 'cash' ? 'Cash on hand' : source.type === 'received_assistance' ? 'Received assistance' : 'Account'}${index ? ` ${index + 1}` : ''}${source.accessible ? '' : ' (unavailable)'}`;
+  const sourceName = (source, index = 0) => {
+    const bankLabel = typeof window !== 'undefined' ? window.StillHerePlaidControls?.labelForSource(source.id) : null;
+    const label = bankLabel || (source.id === 'cash_demo_001' ? 'Sample cash on hand' : `${source.type === 'cash' ? 'Cash on hand' : source.type === 'received_assistance' ? 'Received assistance' : 'Account'}${index ? ` ${index + 1}` : ''}`);
+    return `${label}${source.accessible ? '' : ' (unavailable)'}`;
+  };
   const categories = { food: 'Food and water', lodging: 'Temporary lodging', transport: 'Transportation', recovery: 'Recovery costs', health: 'Health', other: 'Other' };
   const stages = { discovered: 'Found a possible program', eligibility_unknown: 'Eligibility not known', eligibility_checked: 'Eligibility checked', preparing: 'Preparing', applied: 'Applied', approved: 'Approved, not received', received: 'Received', denied: 'Denied', appeal: 'Appealing' };
 

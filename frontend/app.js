@@ -48,6 +48,8 @@
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => Array.from(document.querySelectorAll(selector));
   const financeControls = window.StillHereFinanceControls.mount({ service: window.StillHereMockService, onChange: () => renderFinance() });
+  const plaidControls = window.StillHerePlaidControls.mount({ service: window.StillHereMockService, onChange: () => renderFinance() });
+  const checkInControls = window.StillHereCheckInControls.mount({ service: window.StillHereMockService });
 
   function save() {
     try {
@@ -110,6 +112,7 @@
     else history.replaceState(null, '', `#${name}`);
     if (name === 'chat') renderChat();
     if (name === 'finance') renderFinance();
+    if (name === 'check-ins') checkInControls.render();
     if (name === 'location') {
       $('#city-input').value = state.city;
       $('#stop-sharing-city').classList.toggle('is-hidden', !state.locationShared);
@@ -122,29 +125,30 @@
     const storm = $('.storm-card');
     if (!state.locationShared) {
       storm.innerHTML = `
-        <div class="storm-topline"><span class="storm-icon" aria-hidden="true">⌖</span><span class="storm-label">LOCAL NOTICES</span></div>
-        <h2 id="storm-heading">Share your city to check nearby notices.</h2>
+        <div class="storm-topline"><span class="storm-label">Local notices</span></div>
+        <h2 id="storm-heading">Check notices near you</h2>
         <p>You can still open a recovery chat without sharing your location.</p>
-        <div class="storm-actions"><button class="button button-primary" id="share-location-again">Choose whether to share <span aria-hidden="true">→</span></button></div>`;
+        <div class="storm-actions"><button class="button button-primary" id="share-location-again">Choose city</button><button class="quiet-link" id="affected-no">Start recovery chat</button></div>`;
     } else if (isLouisianaDemoCity()) {
       storm.innerHTML = `
-        <div class="storm-topline"><span class="storm-icon" aria-hidden="true">✳</span><span class="storm-label">DEMO DISASTER NOTICE</span><span class="storm-place" id="storm-place">LOUISIANA · HURRICANE SCENARIO</span></div>
-        <h2 id="storm-heading">A hurricane may be affecting your area.</h2>
-        <p>Are you affected, or do you need help because of the storm?</p>
-        <div class="storm-actions"><button class="button button-primary" id="affected-yes">Yes, I’m affected <span aria-hidden="true">→</span></button><button class="button button-secondary" id="affected-unsure">I’m not sure</button></div>
+        <div class="storm-topline"><span class="storm-label">Demo notice</span><span class="storm-place" id="storm-place">Louisiana</span></div>
+        <h2 id="storm-heading">Are you affected by the hurricane in your city?</h2>
+        <p>Tell us if the storm has affected you.</p>
+        <div class="storm-actions"><button class="button button-primary" id="affected-yes">Yes, I’m affected</button><button class="button button-secondary" id="affected-unsure">I’m not sure</button></div>
         <button class="quiet-link" id="affected-no">No, but I still need help</button>`;
     } else {
       storm.innerHTML = `
-        <div class="storm-topline"><span class="storm-icon" aria-hidden="true">⌖</span><span class="storm-label">LOCAL DEMO NOTICES</span><span class="storm-place">NO MATCH</span></div>
-        <h2>No matching demo disaster notice for your city.</h2>
+        <div class="storm-topline"><span class="storm-label">Local notices · Demo</span></div>
+        <h2 id="storm-heading">No demo notices for your city</h2>
         <p>You can still open a chat to find recovery help. This demo only includes a Louisiana hurricane scenario.</p>
         <div class="storm-actions"><button class="button button-primary" id="affected-no">Start a chat <span aria-hidden="true">→</span></button></div>`;
     }
     $('#continue-card').classList.toggle('is-hidden', !state.active);
     const needsSummary = currentNeeds() || 'Your needs';
     $('#resume-summary').textContent = state.stage === 'steps' ? `${needsSummary} · next steps are ready to review.` : `${needsSummary} · a few questions are still open.`;
-    $('#finance-chat-start').textContent = state.financeActive ? 'Continue finance chat' : 'Chat about finances';
+    $('#finance-chat-start').textContent = state.financeActive ? 'Continue finance chat' : 'Start finance chat';
     $('#chat-context-label').textContent = `${state.incident === 'hurricane' && state.affected ? 'Hurricane help' : 'Recovery help'} · ${shortCity(state.city)}`;
+    checkInControls.renderHome();
   }
 
   function shortCity(city) {
@@ -231,6 +235,7 @@
       $('#finance-gap-detail').textContent = problem.message;
       $('#finance-first-gap').textContent = 'Not yet known';
       $('#finance-opening').textContent = 'Not yet known';
+      $('#finance-opening-detail').textContent = 'Saved money sources need review';
       $('#finance-scenarios').replaceChildren();
       $('#finance-forecast-rows').replaceChildren();
       $('#finance-save-status').textContent = 'Your saved entries were kept. Resolve the invalid records before adding more.';
@@ -238,8 +243,16 @@
     }
     const selected = results.find((scenario) => scenario.scenario_id === selectedFinanceScenario) || results[0];
     $('#finance-opening').textContent = money(results[0].opening_cents);
+    const openingSources = ledger.money_sources.filter((source) => source.accessible === true && source.currency === 'USD' && Array.isArray(source.restrictions) && source.restrictions.length === 0 && Number.isSafeInteger(source.balance_cents) && (!source.available_on || source.available_on <= selected.start_date) && (!source.expires_on || source.expires_on >= selected.start_date));
+    const openingGroups = new Map();
+    openingSources.forEach((source) => {
+      const label = source.id === 'cash_demo_001' ? 'Sample cash' : source.type === 'cash' ? 'Cash' : source.type === 'received_assistance' ? 'Received assistance' : 'Accounts';
+      openingGroups.set(label, (openingGroups.get(label) || 0) + source.balance_cents);
+    });
+    $('#finance-opening-detail').textContent = results[0].opening_cents === null ? 'Some balances need confirmation' : [...openingGroups].map(([label, amount]) => `${label} ${money(amount)}`).join(' + ') || 'No accessible unrestricted money recorded';
     $('#finance-start').textContent = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${selected.start_date}T12:00:00Z`));
     financeControls.render();
+    plaidControls.render();
     const options = $('#finance-scenarios');
     options.replaceChildren();
     results.forEach((scenario) => {
@@ -302,18 +315,14 @@
   function messageNode(message) {
     const row = document.createElement('div');
     row.className = `message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`;
-    const avatar = document.createElement('div');
-    avatar.className = 'assistant-avatar';
-    avatar.setAttribute('aria-hidden', 'true');
-    avatar.textContent = message.role === 'user' ? 'RH' : 's.';
     const body = document.createElement('div');
     body.className = 'message-body';
     const p = document.createElement('p');
     p.textContent = message.text;
-    const time = document.createElement('small');
-    time.innerHTML = message.role === 'user' ? 'You <span>·</span> just now' : 'StillHere <span>·</span> just now';
-    body.append(p, time);
-    row.append(avatar, body);
+    const author = document.createElement('small');
+    author.textContent = message.role === 'user' ? 'You' : 'StillHere';
+    body.append(p, author);
+    row.append(body);
     return row;
   }
 
@@ -531,9 +540,9 @@
     renderMessages();
     const financeMode = state.chatMode === 'finance';
     const generalMode = state.chatMode === 'general';
-    $('#chat-thread-label').textContent = financeMode ? 'YOUR FINANCE CONVERSATION' : generalMode ? 'YOUR GENERAL CHAT' : 'YOUR RECOVERY CONVERSATION';
+    $('#chat-thread-label').textContent = financeMode ? 'Finance chat' : generalMode ? 'General chat' : 'Recovery chat';
     $('#chat-context-label').textContent = financeMode ? `Finances · ${shortCity(state.city)}` : generalMode ? 'General support' : `${state.incident === 'hurricane' && state.affected ? 'Hurricane help' : 'Recovery help'} · ${shortCity(state.city)}`;
-    $('#chat-step').textContent = financeMode ? '· FINANCE CONVERSATION' : generalMode ? '· GENERAL CONVERSATION' : state.stage === 'safety' ? '· CHECKING ON YOUR IMMEDIATE SAFETY' : state.stage === 'need' ? '· WHAT HELP DO YOU NEED?' : state.stage === 'obstacles' ? '· WHAT MIGHT GET IN THE WAY?' : state.stage === 'urgent' ? '· IMMEDIATE SAFETY' : '· YOUR NEXT STEPS';
+    $('#chat-step').textContent = financeMode ? 'Talk about your balance, bills, or aid.' : generalMode ? 'Ask a question or tell us what’s happening.' : state.stage === 'safety' ? 'Your immediate safety' : state.stage === 'need' ? 'Choose all the help you need.' : state.stage === 'obstacles' ? 'Is anything making it harder to get help?' : state.stage === 'urgent' ? 'Your immediate safety' : 'Your next steps';
     $('#new-chat').textContent = financeMode ? 'New finance chat' : generalMode ? 'New general chat' : 'Start over';
     $('#message-input').placeholder = financeMode ? 'Type a finance question…' : generalMode ? 'Type a message…' : state.stage === 'steps' ? 'Ask a question or tell us what changed…' : 'Type a message…';
     setTimeout(() => $('#message-input').focus({ preventScroll: true }), 0);
@@ -916,6 +925,7 @@
   if (hash === 'chat') setScreen('chat');
   else if (hash === 'location') setScreen('location');
   else if (hash === 'finance') setScreen('finance');
+  else if (hash === 'check-ins') setScreen('check-ins');
   else setScreen('home');
   if (!state.locationPromptSeen && !state.locationShared) showLocationPrompt();
 })();

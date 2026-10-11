@@ -286,6 +286,8 @@ Recalculate after changes to money, expenses, aid, confirmed support, or selecte
 
 ### 8.5 Optional Plaid Sandbox
 
+Implementation note, October 10, 2026: the user requested isolated P2 connector/setup preparation ahead of P1 integration. Its [local Sandbox slice](p2-plaid-setup.md) is in progress; credentials, provider/browser verification, durable authorization/token storage, and the core acceptance gates remain pending.
+
 If the core journey is stable, add user-initiated read-only linking of a test account. Import selected balances and transaction changes through a private backend adapter into the same finance records. Tokens remain outside model context; connection is optional and disconnect is available.
 
 Show **sandbox/synthetic** labels. Plaid documents test accounts and transaction simulation; some sandbox data can be inconsistent across products, so use a deliberate fixture or expose a reconciliation conflict. [Sandbox](https://plaid.com/docs/sandbox/), [transactions](https://plaid.com/docs/transactions/), [balances](https://plaid.com/docs/balance/).
