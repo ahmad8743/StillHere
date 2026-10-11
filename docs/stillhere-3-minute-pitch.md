@@ -52,7 +52,11 @@ The agent is programmed to take in this new data and fix my to-do list according
 
 We use strands and AWS Bedrock to host this agent and its tools.
 
-Akamai is used for application hosting using Linode and database management
+The agentic motivation for StillHere is that changing situations are hard to track consistently.
+
+Agents can make this easier through their reasoning capabilities.
+
+We also used Akamai is for application hosting using Linode and database management
 
 ### Raneem | Business Model
 
