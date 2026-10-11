@@ -28,7 +28,9 @@ Our app considers those obstacles and provides guidance based on my situation. A
 
 Now let's talk about money, because finding help is only half the problem.
 
-We built a financial planning tool that shows how long your available money could last while you're waiting for assistance.
+We built a financial planning tool that shows how long your available money could last while you're waiting for assistance. 
+
+you can connect your bankaccount through plaid ai. if you choose not to, you can enter the cash amount you have manually.
 
 Here, I have $300. Based on these sample expenses, I run out of money on day five.
 
@@ -56,7 +58,7 @@ The agentic motivation for StillHere is that changing situations are hard to tra
 
 Agents can make this easier through their reasoning capabilities.
 
-We also used Akamai is for application hosting using Linode and database management
+We also used Akamai for application hosting using Linode and database management
 
 ### Raneem | Business Model
 
