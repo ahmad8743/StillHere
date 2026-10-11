@@ -55,18 +55,18 @@ test('restricted money pays only eligible expenses after noncash support', () =>
 test('unconfirmed support and unreceived aid never enter baseline', () => {
   const input = ledger();
   input.support = [{ id: 'possible', state: 'hypothetical', categories: ['food'], start_day: 1, end_day: 14 }];
-  input.aid = [{ id: 'application', state: 'approved', amount_cents: 50000 }];
+  input.aid = [{ id: 'application', stage: 'approved', amount_cents: 50000 }];
   assert.equal(finance.forecast(input, '2026-10-10').ending_projected_cents, -64000);
 });
 test('unknown costs produce incomplete projections and retain version on alternatives', () => {
-  const result = finance.forecastFinances({ ledger: ledger(), start_date: '2026-10-10', case_time_zone: 'America/Chicago', input_case_version: 7, action_alternatives: [{ id: 'visit', costs: [{ id: 'fare', date: '2026-10-11', amount_cents: null }] }] });
+  const result = finance.forecastFinances({ ledger: ledger(), start_date: '2026-10-10', case_time_zone: 'America/Chicago', input_case_version: 7, action_alternatives: [{ id: 'visit', costs: [{ id: 'fare', category: 'transport', date: '2026-10-11', amount_cents: null }] }] });
   assert.equal(result.baseline.ending_projected_cents, -64000);
   assert.equal(result.action_comparisons[0].result.input_case_version, 7);
   assert.equal(result.action_comparisons[0].result.ending_projected_cents, null);
   assert.ok(result.action_comparisons[0].result.warnings.length);
 });
 test('duplicate aid receipt asks for reconciliation without changing balances', () => {
-  const input = ledger(); input.aid = [{ id: 'aid_1', stage: 'approved', restrictions: [] }];
+  const input = ledger(); input.aid = [{ id: 'aid_1', stage: 'approved', amount_cents: null, restrictions: [] }];
   const receipt = { operation: 'record_receipt', event_id: 'receipt_1', money_source_id: 'cash_demo_001', amount_cents: 50000, effective_date: '2026-10-10', balance_effect: 'adjust_source', aid_id: 'aid_1' };
   const applied = finance.applyFinancialUpdate(input, receipt);
   const duplicate = finance.applyFinancialUpdate(applied.ledger, { ...receipt, event_id: 'import_1' });
@@ -203,7 +203,7 @@ test('received aid cannot be marked unreceived while its receipt remains active'
 
 
 test('unknown aid restrictions and ambiguous planned spending require clarification', () => {
-  const input = ledger(); input.aid = [{ id: 'unknown_terms', stage: 'approved' }];
+  const input = ledger(); input.aid = [{ id: 'unknown_terms', stage: 'approved', amount_cents: null }];
   const receipt = { operation: 'record_receipt', event_id: 'terms', money_source_id: 'cash_demo_001', effective_date: '2026-10-10', amount_cents: 5000, balance_effect: 'adjust_source', aid_id: 'unknown_terms' };
   assert.equal(finance.applyFinancialUpdate(input, receipt).status, 'needs_clarification');
   const unlinked = { ...expense }; delete unlinked.commitment_id;

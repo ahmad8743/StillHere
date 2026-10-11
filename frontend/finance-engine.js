@@ -26,7 +26,7 @@
   }
 
   function updateResult(status, ledger, changedRecordIds = [], reconciliationNotes = [], issues = []) {
-    return { status, ledger, changed_record_ids: changedRecordIds, reconciliation_notes: reconciliationNotes, issues };
+    return { status, ledger, changed_record_ids: [...new Set(changedRecordIds)], reconciliation_notes: reconciliationNotes, issues };
   }
 
   function stableJson(value) {
@@ -44,6 +44,35 @@
 
   function affectedSources(event) {
     return [event.money_source_id, event.destination_source_id].filter(Boolean);
+  }
+
+  function ledgerProblem(ledger) {
+    for (const name of ['money_sources', 'actual_events', 'expense_commitments', 'aid', 'support', 'record_updates']) {
+      const ids = (ledger[name] || []).map((item) => item.id);
+      if (new Set(ids).size !== ids.length) return `Duplicate IDs in ${name}.`;
+    }
+    if (ledger.actual_events.some((event) => (ledger.record_updates || []).some((edit) => edit.id === event.id))) return 'Transaction and record-update IDs must be distinct.';
+    for (const source of ledger.money_sources) {
+      if (source.available_on && source.expires_on && source.available_on > source.expires_on) return 'A money source expires before it is available.';
+      if ((source.reflected_event_ids || []).some((id) => !ledger.actual_events.some((event) => event.id === id && affectedSources(event).includes(source.id)))) return 'A balance references an unknown reflected transaction.';
+    }
+    if ([...ledger.expense_commitments, ...(ledger.support || [])].some((item) => !validSchedule(item))) return 'A schedule ends before it starts.';
+    for (const event of ledger.actual_events) {
+      if (affectedSources(event).some((id) => !ledger.money_sources.some((source) => source.id === id))) return 'A transaction references an unknown money source.';
+      if (event.commitment_id && !ledger.expense_commitments.some((item) => item.id === event.commitment_id)) return 'An expense references an unknown commitment.';
+      if (event.aid_id && !(ledger.aid || []).some((item) => item.id === event.aid_id)) return 'A receipt references unknown aid.';
+      if (event.kind === 'correction' && !ledger.actual_events.some((item) => item.id === event.original_event_id && item.reversed_by === event.id)) return 'A correction does not match its original transaction.';
+      if (event.reversed_by && !ledger.actual_events.some((item) => item.id === event.reversed_by && item.original_event_id === event.id)) return 'A transaction has an unknown reversal.';
+    }
+    for (const aid of ledger.aid || []) {
+      const receipts = ledger.actual_events.filter((event) => event.kind === 'receipt' && !event.reversed_by && event.aid_id === aid.id);
+      if (receipts.length > 1 || (aid.stage === 'received' && (!receipts.length || aid.actual_receipt_id !== receipts[0].id)) || (receipts.length && aid.stage !== 'received') || (aid.actual_receipt_id && !receipts.length)) return 'Aid and its actual receipt need reconciliation.';
+    }
+    for (const edit of ledger.record_updates || []) {
+      if ([edit.before, edit.after].some((record) => record && record.id !== edit.record_id)) return 'A record audit references a different record ID.';
+      if (edit.reversed_by && !(ledger.record_updates || []).some((item) => item.id === edit.reversed_by && item.operation === 'reverse_record_update' && item.record_id === edit.record_id)) return 'A record audit has an unknown undo.';
+    }
+    return null;
   }
 
   function applyTransferOrReversal(ledger, update) {
@@ -199,15 +228,21 @@
    * that already includes the event is never adjusted a second time.
    */
   function applyFinancialUpdate(ledger, update) {
-    if (!ledger || !Array.isArray(ledger.money_sources) || !Array.isArray(ledger.actual_events) || !Array.isArray(ledger.expense_commitments)) {
-      return updateResult('rejected', ledger, [], [], [{ code: 'invalid_ledger', message: 'A ledger with money_sources, actual_events, and expense_commitments is required.' }]);
-    }
-    if (!validation?.validateUpdate) {
+    if (!validation?.validateUpdate || !validation?.validateLedger) {
       return updateResult('rejected', ledger, [], [], [{ code: 'validator_unavailable', message: 'The financial input validator is unavailable. Reload the application before making changes.' }]);
     }
+    const invalidLedger = validation.validateLedger(ledger) ? ledgerProblem(ledger) : 'The saved financial records do not match the ledger contract.';
+    if (invalidLedger) return updateResult('rejected', ledger, [], [], [{ code: 'invalid_ledger', message: invalidLedger }]);
     if (!validation.validateUpdate(update)) {
       return updateResult('rejected', ledger, [], [], [{ code: 'invalid_update', message: 'This financial update does not match the supported input contract. Check its operation, required fields, dates, and integer-cent amounts.' }]);
     }
+    const result = applyValidatedUpdate(ledger, update);
+    if (result.status === 'applied' && (!validation.validateLedger(result.ledger) || ledgerProblem(result.ledger))) return updateResult('needs_clarification', ledger, [], [], [{ code: 'ledger_reconciliation_required', message: 'This update would create inconsistent financial records. Review the affected balances, dates, or references.' }]);
+    if (!validation.validateUpdateResult(result)) throw new TypeError('Financial update result does not match its output contract.');
+    return result;
+  }
+
+  function applyValidatedUpdate(ledger, update) {
     if (update && ['record_transfer', 'reverse_event'].includes(update.operation)) return applyTransferOrReversal(ledger, update);
     if (update && ['set_source_access', 'reverse_record_update', 'refresh_balance', 'upsert_money_source', 'upsert_commitment', 'upsert_aid', 'upsert_support'].includes(update.operation)) return applyRecordUpdate(ledger, update);
     if (!update || !['record_expense', 'record_receipt'].includes(update.operation)) {
@@ -305,13 +340,15 @@
   }
 
   function forecast(ledger, startDate, scenarioId = 'baseline', actionCosts = []) {
-    if (!ledger || !Array.isArray(ledger.money_sources) || !Array.isArray(ledger.expense_commitments)) {
-      throw new TypeError('A ledger with money_sources and expense_commitments is required.');
-    }
     if (!validDate(startDate)) throw new TypeError('startDate must be a valid YYYY-MM-DD date.');
     const scenario = typeof scenarioId === 'object' && scenarioId ? scenarioId : scenarios.find((item) => item.id === scenarioId);
     if (!scenario) throw new RangeError(`Unknown finance scenario: ${scenarioId}`);
-    if (!Array.isArray(actionCosts)) throw new TypeError('actionCosts must be an array.');
+    const request = { ledger, start_date: startDate, case_time_zone: 'UTC', scenarios: [scenario], action_alternatives: [{ id: 'direct', costs: actionCosts }] };
+    if (!validation?.validateForecastInput?.(request)) throw new TypeError('The ledger, scenario, or action costs do not match the forecast contract.');
+    const problem = ledgerProblem(ledger);
+    if (problem || scenario.support.some((item) => !validSchedule(item))) throw new TypeError(problem || 'Scenario support dates are out of order.');
+    const supportIds = scenario.support.map((item) => item.id).filter(Boolean);
+    if (new Set(supportIds).size !== supportIds.length) throw new TypeError('Scenario support needs distinct IDs.');
     const warnings = [];
     let unknownOpening = false;
     const accessibleSources = ledger.money_sources.filter((source) => source.accessible === true);
@@ -420,7 +457,7 @@
           dueCents += remainingCents;
           affectedCommitmentIds.push(expense.id);
           const gap = Math.max(0, remainingCents - Math.max(0, balanceCents));
-          if (gap && expense.essential !== false) {
+          if (gap) {
             unmetCents += gap;
             unmetCommitmentIds.push(expense.id);
           }
@@ -441,7 +478,7 @@
       projected_cents: null,
       unmet_cents: null
     }));
-    return {
+    const result = {
       scenario_id: scenario.id,
       label: scenario.label,
       description: scenario.description,
@@ -449,6 +486,7 @@
       end_date: dateAt(startDate, DAY_COUNT - 1),
       input_case_version: null,
       opening_cents: unknownOpening ? null : openingCents,
+      opening_accessible_cents: unknownOpening ? null : openingCents,
       first_gap: complete ? firstGap : null,
       partial_first_gap: complete ? null : firstGap,
       ending_projected_cents: complete ? balanceCents : null,
@@ -457,6 +495,8 @@
       warnings: uniqueWarnings,
       days: projectedDays
     };
+    if (!validation.validateProjection(result)) throw new RangeError('Forecast exceeds supported integer-cent limits or output shape.');
+    return result;
   }
 
   function compare(ledger, startDate) {
@@ -464,7 +504,7 @@
   }
 
   function forecastFinances(input) {
-    if (!input || typeof input !== 'object') throw new TypeError('Forecast input is required.');
+    if (!validation?.validateForecastInput?.(input)) throw new TypeError('Forecast input does not match the supported contract.');
     const { ledger, start_date: startDate, case_time_zone: timeZone, input_case_version: inputVersion, scenarios: requestedScenarios = [], action_alternatives: alternatives = [] } = input;
     if (!validDate(startDate)) throw new TypeError('start_date must be a valid YYYY-MM-DD date.');
     if (typeof timeZone !== 'string' || !timeZone) throw new TypeError('case_time_zone is required.');
@@ -477,18 +517,21 @@
     requestedScenarios.forEach((scenario) => {
       if (!scenario || typeof scenario.id !== 'string' || !scenario.id || scenarioIds.has(scenario.id) || !Array.isArray(scenario.support) || !Array.isArray(scenario.receipts)) throw new TypeError('Each hypothetical scenario needs a unique ID, support array, and receipts array.');
       scenario.support.forEach((item) => {
-        if (!item || !Array.isArray(item.categories) || item.categories.some((category) => typeof category !== 'string') || !Number.isInteger(item.start_day) || !Number.isInteger(item.end_day) || item.start_day < 1 || item.end_day > DAY_COUNT || item.end_day < item.start_day) throw new TypeError(`Scenario ${scenario.id} contains invalid support coverage.`);
+        if (!validSchedule(item)) throw new TypeError(`Scenario ${scenario.id} contains invalid support coverage.`);
       });
       scenario.receipts.forEach((receipt) => {
         if (!receipt || !validCents(receipt.amount_cents) || !(validDate(receipt.date) || (Number.isInteger(receipt.day) && receipt.day >= 1 && receipt.day <= DAY_COUNT)) || (receipt.timing !== undefined && !['before_expenses', 'after_expenses'].includes(receipt.timing))) throw new TypeError(`Scenario ${scenario.id} contains an invalid hypothetical receipt.`);
       });
       scenarioIds.add(scenario.id);
     });
+    if (new Set(alternatives.map((item) => item.id)).size !== alternatives.length) throw new TypeError('Action alternatives need unique IDs.');
     alternatives.forEach((alternative) => {
       if (!alternative || typeof alternative.id !== 'string' || !alternative.id || !Array.isArray(alternative.costs)) throw new TypeError('Each action alternative needs an ID and a costs array.');
       alternative.costs.forEach((cost) => {
         if (!cost || !validDate(cost.date) || !(cost.amount_cents === null || validCents(cost.amount_cents))) throw new TypeError('Each action cost needs a valid date and a non-negative integer amount in cents or null.');
       });
+      const ids = [...ledger.expense_commitments, ...alternative.costs].map((item) => item.id);
+      if (new Set(ids).size !== ids.length) throw new TypeError('Action costs need IDs distinct from baseline commitments.');
     });
     const baseline = forecast(ledger, startDate, 'baseline');
     const scenarioResults = requestedScenarios.map((scenario) => forecast(ledger, startDate, scenario));
@@ -496,7 +539,7 @@
       alternative_id: alternative.id,
       result: { ...forecast(ledger, startDate, 'baseline', alternative.costs), input_case_version: inputVersion ?? null }
     }));
-    return {
+    const result = {
       input_case_version: inputVersion ?? null,
       start_date: startDate,
       end_date: dateAt(startDate, DAY_COUNT - 1),
@@ -505,8 +548,10 @@
       scenarios: scenarioResults.map((result) => ({ ...result, input_case_version: inputVersion ?? null })),
       action_comparisons: actionComparisons,
       assumptions: baseline.assumptions,
-      warnings: [...baseline.warnings]
+      warnings: [...new Set([...baseline.warnings, ...scenarioResults.flatMap((item) => item.warnings), ...actionComparisons.flatMap((item) => item.result.warnings)])]
     };
+    if (!validation.validateForecastOutput(result)) throw new TypeError('Calculated forecast does not match its output contract.');
+    return result;
   }
 
   const api = Object.freeze({ DAY_COUNT, scenarios: Object.freeze(scenarios), applyFinancialUpdate, apply_financial_update: applyFinancialUpdate, forecast, forecastFinances, forecast_finances: forecastFinances, compare });

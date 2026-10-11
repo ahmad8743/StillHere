@@ -1,0 +1,679 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:stillhere:finance-forecast:0.1-draft",
+  "$comment": "P2 input/output contracts. Calendar dates or demo day offsets are mutually exclusive. Null amounts remain unknown. Domain code validates date ordering, unique record IDs, references, time zone and arithmetic bounds.",
+  "$ref": "#/$defs/Input",
+  "$defs": {
+    "Input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ledger",
+        "start_date",
+        "case_time_zone"
+      ],
+      "properties": {
+        "ledger": {
+          "$ref": "urn:stillhere:finance-ledger:0.1-draft"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "case_time_zone": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "input_case_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Scenario"
+          },
+          "maxItems": 3
+        },
+        "action_alternatives": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "costs"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "costs": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/ActionCost"
+                }
+              }
+            }
+          },
+          "maxItems": 3
+        }
+      }
+    },
+    "Output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_case_version",
+        "start_date",
+        "end_date",
+        "case_time_zone",
+        "baseline",
+        "scenarios",
+        "action_comparisons",
+        "assumptions",
+        "warnings"
+      ],
+      "properties": {
+        "input_case_version": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "case_time_zone": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "baseline": {
+          "$ref": "#/$defs/Projection"
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Projection"
+          },
+          "maxItems": 3
+        },
+        "action_comparisons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "alternative_id",
+              "result"
+            ],
+            "properties": {
+              "alternative_id": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              "result": {
+                "$ref": "#/$defs/Projection"
+              }
+            }
+          },
+          "maxItems": 3
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "start_date",
+        "end_date",
+        "input_case_version",
+        "opening_cents",
+        "opening_accessible_cents",
+        "first_gap",
+        "partial_first_gap",
+        "ending_projected_cents",
+        "ending_projected_position_cents",
+        "assumptions",
+        "warnings",
+        "days"
+      ],
+      "properties": {
+        "scenario_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "input_case_version": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opening_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opening_accessible_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "first_gap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "partial_first_gap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gap"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ending_projected_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ending_projected_position_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "days": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Day"
+          },
+          "minItems": 14,
+          "maxItems": 14
+        }
+      }
+    },
+    "Day": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "released_cents",
+        "expired_cents",
+        "receipts_cents",
+        "support_cents",
+        "restricted_cents",
+        "expenses_cents",
+        "day",
+        "date",
+        "unmet_cents",
+        "projected_cents",
+        "affected_commitment_ids"
+      ],
+      "properties": {
+        "released_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expired_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "receipts_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "support_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "restricted_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expenses_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "unmet_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "projected_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "known_projected_cents": {
+          "type": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "known_unmet_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "affected_commitment_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "Gap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "day",
+        "date",
+        "amount_cents",
+        "affected_commitment_ids"
+      ],
+      "properties": {
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "amount_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "affected_commitment_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "Scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "support",
+        "receipts"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "label": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "support": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScenarioSupport"
+          }
+        },
+        "receipts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ScenarioReceipt"
+          }
+        }
+      }
+    },
+    "ScenarioSupport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "categories"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "const": "hypothetical"
+        },
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "amount_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "consumed_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "start_day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "end_day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "date"
+          ]
+        },
+        {
+          "required": [
+            "start_date",
+            "end_date"
+          ]
+        },
+        {
+          "required": [
+            "day"
+          ]
+        },
+        {
+          "required": [
+            "start_day",
+            "end_day"
+          ]
+        }
+      ],
+      "dependentRequired": {
+        "start_date": [
+          "end_date"
+        ],
+        "end_date": [
+          "start_date"
+        ],
+        "start_day": [
+          "end_day"
+        ],
+        "end_day": [
+          "start_day"
+        ]
+      }
+    },
+    "ScenarioReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "amount_cents"
+      ],
+      "properties": {
+        "amount_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "timing": {
+          "enum": [
+            "before_expenses",
+            "after_expenses"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "date"
+          ]
+        },
+        {
+          "required": [
+            "day"
+          ]
+        }
+      ]
+    },
+    "ActionCost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "amount_cents",
+        "date"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amount_cents": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "essential": {
+          "type": "boolean"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "action_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      }
+    }
+  }
+}
