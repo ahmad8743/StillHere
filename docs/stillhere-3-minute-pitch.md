@@ -44,11 +44,13 @@ Because sometimes, getting help isn't enough. **Getting it on time is what matte
 
 ### Ahmad | AWS & Akamai
 
-Behind this experience, we're using the AWS Strands Agents SDK with Amazon Bedrock to coordinate our AI agent and its tools.
+Going back to the recovery assistance chat, we want to include a way for dynamic circumstances to affect scheduling.
 
-Our application runs on Akamai Cloud, connecting the user interface with the backend.
+Lets say, I ____.
 
-Together, these technologies help us make recovery guidance more practical, personalized, and accessible.
+The agent is programmed to take in this new data and fix my to-do list accordingly.
+
+We use strands and AWS Bedrock to host this agent and its tools.
 
 ### Raneem | Business Model
 
