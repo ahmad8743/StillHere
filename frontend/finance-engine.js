@@ -1,5 +1,8 @@
 /* Deterministic, dependency-free 14-day forecast engine. All money is integer USD cents. */
 (() => {
+  const validation = typeof module !== 'undefined' && module.exports
+    ? require('./finance-validation.js')
+    : window.StillHereFinanceValidation;
   const DAY_COUNT = 14;
   const scenarios = [
     { id: 'baseline', label: 'No new support', description: 'No support or new aid is included.', support: [], receipts: [] },
@@ -162,6 +165,7 @@
       const collection = collections[update.operation];
       collectionName = collection;
       const record = update.record;
+      const activeReceipt = collection === 'aid' ? ledger.actual_events.find((event) => event.kind === 'receipt' && !event.reversed_by && event.aid_id === record?.id) : null;
       if (!record || typeof record.id !== 'string' || !record.id.trim()) return fail('invalid_record', 'The record needs a stable ID.');
       if (collection === 'money_sources') {
         if (!(record.balance_cents === null || validCents(record.balance_cents)) || record.currency !== 'USD' || typeof record.accessible !== 'boolean' || !(record.restrictions === null || Array.isArray(record.restrictions)) || !validDate(record.as_of)) return fail('invalid_source', 'Provide a USD balance (or unknown), accessibility, restrictions (or unknown), and as-of date.');
@@ -170,7 +174,8 @@
       if (collection === 'expense_commitments' && (!(record.amount_cents === null || validCents(record.amount_cents)) || typeof record.category !== 'string' || !record.category || !validSchedule(record))) return fail('invalid_commitment', 'An expense needs a category, dated schedule, and integer cents or an unknown amount.');
       if (collection === 'aid') {
         if (!['discovered', 'eligibility_unknown', 'eligibility_checked', 'preparing', 'applied', 'approved', 'received', 'denied', 'appeal'].includes(record.stage) || !(record.amount_cents === null || validCents(record.amount_cents))) return fail('invalid_aid', 'Provide a supported aid stage and amount or unknown.');
-        if (record.stage === 'received' && !ledger.actual_events.some((event) => event.kind === 'receipt' && !event.reversed_by && event.aid_id === record.id)) return fail('receipt_required', 'Record the actual receipt before marking aid received.', 'needs_clarification');
+        if (record.stage === 'received' && !activeReceipt) return fail('receipt_required', 'Record the actual receipt before marking aid received.', 'needs_clarification');
+        if (activeReceipt && record.stage !== 'received') return fail('receipt_reversal_required', 'Reverse the recorded receipt before changing aid back to an unreceived stage.', 'needs_clarification');
       }
       if (collection === 'support' && (!['confirmed', 'hypothetical', 'ended'].includes(record.state) || !validSchedule(record) || !Array.isArray(record.categories) || record.categories.some((category) => typeof category !== 'string') || (record.amount_cents !== undefined && !validCents(record.amount_cents)) || (record.consumed_cents !== undefined && !validCents(record.consumed_cents)))) return fail('invalid_support', 'Support needs its state, covered categories, dates, and valid optional amount and consumption limits.');
       next[collection] ||= [];
@@ -178,6 +183,7 @@
       before = index >= 0 ? structuredClone(next[collection][index]) : null;
       const replacement = structuredClone(record);
       if (collection === 'expense_commitments') replacement.fulfilled_by_date = structuredClone(before?.fulfilled_by_date || {});
+      if (activeReceipt) replacement.actual_receipt_id = activeReceipt.id;
       if (index >= 0) next[collection][index] = replacement;
       else next[collection].push(replacement);
       changedId = record.id;
@@ -195,6 +201,12 @@
   function applyFinancialUpdate(ledger, update) {
     if (!ledger || !Array.isArray(ledger.money_sources) || !Array.isArray(ledger.actual_events) || !Array.isArray(ledger.expense_commitments)) {
       return updateResult('rejected', ledger, [], [], [{ code: 'invalid_ledger', message: 'A ledger with money_sources, actual_events, and expense_commitments is required.' }]);
+    }
+    if (!validation?.validateUpdate) {
+      return updateResult('rejected', ledger, [], [], [{ code: 'validator_unavailable', message: 'The financial input validator is unavailable. Reload the application before making changes.' }]);
+    }
+    if (!validation.validateUpdate(update)) {
+      return updateResult('rejected', ledger, [], [], [{ code: 'invalid_update', message: 'This financial update does not match the supported input contract. Check its operation, required fields, dates, and integer-cent amounts.' }]);
     }
     if (update && ['record_transfer', 'reverse_event'].includes(update.operation)) return applyTransferOrReversal(ledger, update);
     if (update && ['set_source_access', 'reverse_record_update', 'refresh_balance', 'upsert_money_source', 'upsert_commitment', 'upsert_aid', 'upsert_support'].includes(update.operation)) return applyRecordUpdate(ledger, update);

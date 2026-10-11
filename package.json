@@ -4,6 +4,7 @@
   "scripts": {
     "build:finance-contract": "node scripts/build-finance-validator.cjs",
     "check:finance-contract": "node scripts/build-finance-validator.cjs --check",
+    "pretest": "npm run check:finance-contract",
     "test": "node --test tests/frontend/*.test.cjs"
   },
   "devDependencies": {

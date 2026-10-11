@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const context = { window: {}, structuredClone, Intl };
 vm.createContext(context);
-for (const name of ['fixtures', 'finance-engine']) vm.runInContext(fs.readFileSync(`frontend/${name}.js`, 'utf8'), context);
+for (const name of ['fixtures', 'finance-validation', 'finance-engine']) vm.runInContext(fs.readFileSync(`frontend/${name}.js`, 'utf8'), context);
 const finance = context.window.StillHereFinance;
 const ledger = () => structuredClone(context.window.StillHereFixtures.emptySnapshot.finance.ledger);
 const plain = (value) => JSON.parse(JSON.stringify(value));
@@ -176,6 +176,29 @@ test('receipt reversal restores aid stage and rejects impossible balances atomic
   assert.equal(rejected.status, 'needs_clarification');
   assert.equal(rejected.ledger.actual_events[0].reversed_by, undefined);
   assert.equal(rejected.ledger.aid[0].stage, 'received');
+});
+
+test('received aid edits retain their derived receipt link and remain reversible', () => {
+  const input = ledger(); input.aid = [{ id: 'aid', stage: 'approved', amount_cents: 5000, restrictions: [] }];
+  const receipt = { operation: 'record_receipt', event_id: 'receipt', money_source_id: 'cash_demo_001', effective_date: '2026-10-10', amount_cents: 5000, balance_effect: 'adjust_source', aid_id: 'aid' };
+  const received = finance.applyFinancialUpdate(input, receipt);
+  const edit = { operation: 'upsert_aid', event_id: 'aid_edit', effective_date: '2026-10-10', record: { id: 'aid', stage: 'received', amount_cents: 5000, restrictions: [], evidence_ids: ['user_confirmation'] } };
+  const edited = finance.applyFinancialUpdate(received.ledger, edit);
+  assert.equal(edited.status, 'applied');
+  assert.equal(edited.ledger.aid[0].actual_receipt_id, 'receipt');
+  const reversed = finance.applyFinancialUpdate(edited.ledger, { operation: 'reverse_event', event_id: 'undo_receipt', original_event_id: 'receipt', effective_date: '2026-10-10', balance_effect: 'adjust_source' });
+  assert.equal(reversed.status, 'applied');
+  assert.equal(reversed.ledger.aid[0].stage, 'approved');
+  assert.equal(reversed.ledger.money_sources[0].balance_cents, 30000);
+});
+
+test('received aid cannot be marked unreceived while its receipt remains active', () => {
+  const input = ledger(); input.aid = [{ id: 'aid', stage: 'approved', amount_cents: 5000, restrictions: [] }];
+  const received = finance.applyFinancialUpdate(input, { operation: 'record_receipt', event_id: 'receipt', money_source_id: 'cash_demo_001', effective_date: '2026-10-10', amount_cents: 5000, balance_effect: 'adjust_source', aid_id: 'aid' });
+  const result = finance.applyFinancialUpdate(received.ledger, { operation: 'upsert_aid', event_id: 'aid_edit', effective_date: '2026-10-10', record: { id: 'aid', stage: 'approved', amount_cents: 5000, restrictions: [] } });
+  assert.equal(result.status, 'needs_clarification');
+  assert.equal(result.issues[0].code, 'receipt_reversal_required');
+  assert.equal(result.ledger, received.ledger);
 });
 
 
